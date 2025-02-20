@@ -20,12 +20,12 @@ class CSVLogger:
         if not os.path.exists(self.file_path):
             with open(self.file_path, "w", newline="") as file:
                 writer = csv.writer(file)
-                writer.writerow(["Mode", "Status", "Timer", "Time"])  # Kopfzeile schreiben
+                writer.writerow(["Mode", "Status", "Work", "Block", "Task", "Subtask", "Timer", "Time" ])  # Kopfzeile schreiben
 
-    def log(self, mode, status, timer):
+    def log(self, mode, status, work, block, task, subtask, timer):
         """Speichert einen Eintrag in die CSV-Datei."""
         current_time = datetime.now().strftime("%H:%M:%S")
-        data = [mode, status, timer, current_time]
+        data = [mode, status, work, block, task, subtask, timer, current_time]
         
         with open(self.file_path, "a", newline="") as file:
             writer = csv.writer(file)
