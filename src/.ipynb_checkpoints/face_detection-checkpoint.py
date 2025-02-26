@@ -1,20 +1,16 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
-
 import sys
 import cv2
 import time
 import mediapipe as mp
 from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout
 from PyQt5.QtGui import QImage, QPixmap
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, pyqtSignal
 
 mp_face_detection = mp.solutions.face_detection
 
 class FaceDetectorApp(QWidget):
+    status_changed = pyqtSignal(int)  # ✅ Signal als Klassenattribut
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Face Detection")
@@ -39,6 +35,8 @@ class FaceDetectorApp(QWidget):
         self.no_face_logged = False
         self.face_was_missing = True
 
+        self.status = 0  # 0 = Kein Gesicht erkannt, 1 = Gesicht erkannt
+
     def update_frame(self):
         ret, frame = self.cap.read()
         if not ret:
@@ -59,7 +57,9 @@ class FaceDetectorApp(QWidget):
                     self.no_face_logged = False
 
                     if self.face_was_missing:
-                        print("✅ Face detected")
+                        self.status = 1  # Status auf 1 setzen
+                        self.status_changed.emit(self.status)  # ✅ Signal senden
+                        #print(f"✅ Face detected | Status: {self.status}")
                         self.face_was_missing = False
 
                     bboxC = detection.location_data.relative_bounding_box
@@ -77,7 +77,9 @@ class FaceDetectorApp(QWidget):
 
         if not face_detected and time.time() - self.last_face_detected_time > 2:
             if not self.no_face_logged:
-                print("❌ No face detected")
+                self.status = 0  # Status auf 0 setzen
+                self.status_changed.emit(self.status)  # ✅ Signal senden
+                #print(f"❌ No face detected | Status: {self.status}")
                 self.no_face_logged = True
                 self.face_was_missing = True
 
@@ -90,16 +92,3 @@ class FaceDetectorApp(QWidget):
     def closeEvent(self, event):
         self.cap.release()
         event.accept()
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = FaceDetectorApp()
-    window.show()
-    sys.exit(app.exec_())
-
-
-# In[ ]:
-
-
-
-

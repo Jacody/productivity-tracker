@@ -1,0 +1,89 @@
+{
+    "tasks": [
+        {
+            "task": "Software Development",
+            "type": "pc",
+            "category": "Programming",
+            "actual_time": 120,
+            "estimated_time": 150,
+            "subtasks": [
+                {
+                    "subtask": "Write Code",
+                    "status": "Completed",
+                    "actual_time": 60,
+                    "estimated_time": 60
+                },
+                {
+                    "subtask": "Debugging",
+                    "status": "In Progress",
+                    "actual_time": 30,
+                    "estimated_time": 50
+                }
+            ]
+        },
+        {
+            "task": "Workout Routine",
+            "type": "no pc",
+            "category": "Exercise",
+            "actual_time": 45,
+            "estimated_time": 60,
+            "subtasks": [
+                {
+                    "subtask": "Running",
+                    "status": "Completed",
+                    "actual_time": 30,
+                    "estimated_time": 30
+                },
+                {
+                    "subtask": "Stretching",
+                    "status": "Pending",
+                    "actual_time": 0,
+                    "estimated_time": 30
+                }
+            ]
+        },
+        {
+            "task": "House Cleaning",
+            "type": "no pc",
+            "category": "Cleaning",
+            "actual_time": 90,
+            "estimated_time": 120,
+            "subtasks": [
+                {
+                    "subtask": "Vacuuming",
+                    "status": "Completed",
+                    "actual_time": 45,
+                    "estimated_time": 60
+                },
+                {
+                    "subtask": "Mopping",
+                    "status": "In Progress",
+                    "actual_time": 45,
+                    "estimated_time": 60
+                }
+            ]
+        },
+        {
+            "task": "Online Research",
+            "type": "pc",
+            "category": "Learning",
+            "actual_time": 60,
+            "estimated_time": 90,
+            "subtasks": [
+                {
+                    "subtask": "Read Articles",
+                    "status": "Completed",
+                    "actual_time": 30,
+                    "estimated_time": 40
+                },
+                {
+                    "subtask": "Take Notes",
+                    "status": "In Progress",
+                    "actual_time": 30,
+                    "estimated_time": 50
+                }
+            ]
+        }
+    ]
+}
+

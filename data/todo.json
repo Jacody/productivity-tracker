@@ -1,0 +1,65 @@
+{
+    "tasks": [
+        {
+            "task": "Productivity tracker",
+            "type": "Digital",
+            "category": "Hacken",
+            "estimated_time": "30",
+            "subtasks": [
+                {
+                    "subtask": "Save time",
+                    "status": "Pending",
+                    "estimated_time": "2"
+                },
+                {
+                    "subtask": "Thinking",
+                    "status": "Pending",
+                    "estimated_time": "2"
+                },
+                {
+                    "subtask": "Build CSV-Reader",
+                    "status": "In Progress",
+                    "estimated_time": "N/A"
+                }
+            ]
+        },
+        {
+            "task": "Fahrrad planen",
+            "type": "Digital",
+            "category": "Hustle",
+            "estimated_time": "10",
+            "subtasks": [
+                {
+                    "subtask": "Recherche",
+                    "status": "Pending",
+                    "estimated_time": "2"
+                },
+                {
+                    "subtask": "Achslager",
+                    "status": "Pending",
+                    "estimated_time": "2"
+                }
+            ]
+        },
+        {
+            "task": "10 Finger schreiben",
+            "type": "Digital",
+            "category": "Hacken",
+            "estimated_time": "20",
+            "subtasks": [
+                {
+                    "subtask": "Thinking",
+                    "status": "Pending",
+                    "estimated_time": "1"
+                }
+            ]
+        },
+        {
+            "task": "moin",
+            "type": "Digital",
+            "category": "Hacken",
+            "estimated_time": "N/A",
+            "subtasks": []
+        }
+    ]
+}
