@@ -4,6 +4,7 @@ from tabulate import tabulate
 import sys
 import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
+from PyQt5.QtCore import QTimer
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from datetime import datetime, timedelta
 import numpy as np 
@@ -40,6 +41,11 @@ def read_csv(file_path):
         while data and (int(data[0]["Mode"]) != 1 or int(data[0]["Status"]) != 1 or int(data[0]["Work"]) != 1):
             data.pop(0)
 
+        #add last row for live timer
+        current_time = datetime.now().strftime("%H:%M:%S")
+        new_row = {"Mode": "0", "Status": "0", "Work": "0", "Time": current_time }
+        data.append(new_row)
+
         # Add extra columns if not present in CSV
         for row in data:
             row["Start"] = row["Time"] if int(row["Mode"]) == 1 and int(row["Status"]) == 1 and int(row["Work"]) == 1 else "False"
@@ -69,6 +75,15 @@ def read_csv(file_path):
     except Exception as e:
         print(f"An error occurred: {e}")
         return None
+    
+# Function to sum up actual times for each data element
+def sum_actual_times(data_dict):
+    """Sums up all actual times for each data element and converts to an array of hours."""
+    total_actual_times = []
+    for index in sorted(data_dict.keys()):  # Sort keys to maintain order
+        total_time = sum(int(row["Actual Time"]) for row in data_dict[index] if str(row["Actual Time"]).isdigit())
+        total_actual_times.append(round(total_time / 3600, 2))  # Convert seconds to hours
+    return total_actual_times
 
 # Function to print CSV data nicely
 def print_csv_nicely(data, file_path):
@@ -87,18 +102,22 @@ def print_csv_nicely(data, file_path):
 # Process each CSV file and store it in data_dict
 for index, (day, date) in enumerate(week_dates.items(), start=1):
     file_path = os.path.join(base_dir, "data", f"{date}.csv")
-    
     if os.path.exists(file_path):
         print(f"Loading CSV file for {day}: {file_path}")
         data_dict[index] = read_csv(file_path)  # Store data in dictionary with numeric key
-        #print_csv_nicely(data_dict[index], file_path)  # Print nicely formatted output
+    
+        print_csv_nicely(data_dict[index], file_path) #Print nicely formatted output
     else:
         print(f"File does not exist: {file_path}")
+# Calculate and print total actual times
+total_actual_times = sum_actual_times(data_dict)
+print("Total actual times per dataset:", total_actual_times)
 
 # Array für die ersten Startzeiten (ohne Sekunden)
 start_times = [' ', ' ', ' ', ' ', ' ']  
 
-# Durchlaufe alle geladenen CSV-Daten
+
+# Startzeiten laden Durchlaufe alle geladenen CSV-Daten
 for index, data in data_dict.items():
     if data:  # Stelle sicher, dass die Datei Daten enthält
         for row in data:
@@ -107,6 +126,8 @@ for index, data in data_dict.items():
                 start_time = datetime.strptime(row["Start"], "%H:%M:%S").strftime("%H:%M")
                 start_times[index - 1] = start_time  # Speichere die Zeit an der richtigen Stelle
                 break  # Schleife für diese Datei beenden, sobald eine Startzeit gefunden wurde
+
+
 
 print("Erste Startzeiten aus jeder CSV-Datei (ohne Sekunden):", start_times)
 
@@ -139,11 +160,10 @@ class BarChartApp(QMainWindow):
         # Kategorien (Wochentage)
         categories = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
         #start_times = [8.5, 9, 8, 8.1, 9]  # Startzeiten für jede Kategorie
-        total_hours = [3, 4, 5, 6, 7]  # Gesamte Stundenzeit für jeden Balken
         x_positions = np.arange(len(categories))  # X-Positionen für die Balken
 
         # Werte für die blauen Balken (Hauptwerte)
-        #values = [9, 11, 14, 16, 18]  # Beispielstunden
+        values = [9, 11, 14, 16]  # Beispielstunden
 
         # Blauen Balken zeichnen
         #self.ax.bar(x_positions, values, color='royalblue', width=0.4, label="Main Data")
@@ -164,16 +184,32 @@ class BarChartApp(QMainWindow):
         # Zusätzlicher roter Balken für Montag (10:00 - 12:00)
         #self.ax.bar(x_positions[0], 2, bottom=10, color='red', width=0.4, label="Hacken")
         #self.ax.bar(x_positions[1], 2700/3600, bottom=8.5, color='royalblue', width=0.4, label="Hacken")
-
         
-        for j in range(1, len(data_dict) + 1):  # Start bei 1, weil data_dict[0] nicht existiert
-            if data_dict[j] is not None:  # Sicherstellen, dass Daten existieren
-                for i in range(len(data_dict[j]) - 1):  # Nicht auf die letzte Zeile zugreifen!
-                    if data_dict[j][i]["Start"] != "False":
+        #Balken zeichnen
+        values = [9, 11, 14, 16]  # Werte, die über den letzten Balken stehen sollen
 
-                        self.ax.bar(x_positions[j-1], data_dict[j][i]["Actual Time"]/3600, 
+        for j in range(1, len(data_dict) + 1):  # Start bei 1, weil data_dict[0] nicht existiert
+            if data_dict[j] is not None and len(data_dict[j]) > 1:  # Sicherstellen, dass Daten existieren
+                last_valid_index = None
+                
+                for i in range(len(data_dict[j]) - 1):  # Nicht auf die letzte Zeile zugreifen!
+                    if data_dict[j][i]["Start"] != "False" and data_dict[j][i]["Actual Time"] > 0:
+                        last_valid_index = i  # Speichert den Index des letzten gültigen Balkens
+                        
+                        self.ax.bar(x_positions[j-1], data_dict[j][i]["Actual Time"] / 3600, 
                                     bottom=time_to_decimal(str(data_dict[j][i]["Start"])), 
                                     color='royalblue', width=0.4)
+                
+                # Falls ein gültiger letzter Balken existiert, platziere den Text darüber
+                if last_valid_index is not None and j <= len(total_actual_times):
+                    last_bar_height = data_dict[j][last_valid_index]["Actual Time"] / 3600
+                    last_bar_bottom = time_to_decimal(str(data_dict[j][last_valid_index]["Start"]))
+                    last_bar_top = last_bar_bottom + last_bar_height
+
+                    self.ax.text(x_positions[j-1], last_bar_top + 0.2,  # Direkt über dem letzten Balken
+                                str(total_actual_times[j-1]), 
+                                ha='center', fontsize=10, fontweight='normal', color='black')
+
         '''
         # **Totale Stunden als Text über jedem Balken platzieren**
         for bar, hours in zip(bars, total_hours):
