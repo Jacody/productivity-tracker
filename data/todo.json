@@ -21,30 +21,36 @@
                 },
                 {
                     "subtask": "Build CSV-Reader",
+                    "status": "Pending",
+                    "estimated_time": "N/A",
+                    "actual_time": "0"
+                },
+                {
+                    "subtask": "Display different Categories",
                     "status": "In Progress",
                     "estimated_time": "N/A",
+                    "actual_time": "0"
+                },
+                {
+                    "subtask": "Drag and Drop",
+                    "status": "Pending",
+                    "estimated_time": "1",
                     "actual_time": "0"
                 }
             ]
         },
         {
-            "task": "Fahrrad planen",
+            "task": "AI Research",
             "type": "Digital",
-            "category": "Hustle",
-            "estimated_time": "10",
+            "category": "Hacken",
+            "estimated_time": "30",
             "actual_time": "0",
             "subtasks": [
                 {
-                    "subtask": "Recherche",
+                    "subtask": "R1 Setup",
                     "status": "Pending",
-                    "estimated_time": "2",
-                    "actual_time": "0"
-                },
-                {
-                    "subtask": "Achslager",
-                    "status": "Pending",
-                    "estimated_time": "2",
-                    "actual_time": "0"
+                    "estimated_time": "3",
+                    "actual_time": "1.5"
                 }
             ]
         },
@@ -64,27 +70,33 @@
             ]
         },
         {
+            "task": "Fahrrad planen",
+            "type": "Digital",
+            "category": "Hustle",
+            "estimated_time": "10",
+            "actual_time": "0",
+            "subtasks": [
+                {
+                    "subtask": "Achslager",
+                    "status": "Pending",
+                    "estimated_time": "2",
+                    "actual_time": "0"
+                },
+                {
+                    "subtask": "Recherche",
+                    "status": "Pending",
+                    "estimated_time": "2",
+                    "actual_time": "0"
+                }
+            ]
+        },
+        {
             "task": "moin",
             "type": "Digital",
             "category": "Hacken",
             "estimated_time": "N/A",
             "actual_time": "0",
             "subtasks": []
-        },
-        {
-            "task": "AI Research",
-            "type": "Digital",
-            "category": "Hacken",
-            "estimated_time": "30",
-            "actual_time": "0",
-            "subtasks": [
-                {
-                    "subtask": "R1 Setup",
-                    "status": "In Progress",
-                    "estimated_time": "3",
-                    "actual_time": "1.5"
-                }
-            ]
         }
     ]
 }
