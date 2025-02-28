@@ -5,21 +5,25 @@
             "type": "Digital",
             "category": "Hacken",
             "estimated_time": "30",
+            "actual_time": "0",
             "subtasks": [
                 {
                     "subtask": "Save time",
                     "status": "Pending",
-                    "estimated_time": "2"
+                    "estimated_time": "2",
+                    "actual_time": "0"
                 },
                 {
                     "subtask": "Thinking",
                     "status": "Pending",
-                    "estimated_time": "2"
+                    "estimated_time": "2",
+                    "actual_time": "0"
                 },
                 {
                     "subtask": "Build CSV-Reader",
                     "status": "In Progress",
-                    "estimated_time": "N/A"
+                    "estimated_time": "N/A",
+                    "actual_time": "0"
                 }
             ]
         },
@@ -28,16 +32,19 @@
             "type": "Digital",
             "category": "Hustle",
             "estimated_time": "10",
+            "actual_time": "0",
             "subtasks": [
                 {
                     "subtask": "Recherche",
                     "status": "Pending",
-                    "estimated_time": "2"
+                    "estimated_time": "2",
+                    "actual_time": "0"
                 },
                 {
                     "subtask": "Achslager",
                     "status": "Pending",
-                    "estimated_time": "2"
+                    "estimated_time": "2",
+                    "actual_time": "0"
                 }
             ]
         },
@@ -46,11 +53,13 @@
             "type": "Digital",
             "category": "Hacken",
             "estimated_time": "20",
+            "actual_time": "0",
             "subtasks": [
                 {
                     "subtask": "Thinking",
                     "status": "Pending",
-                    "estimated_time": "1"
+                    "estimated_time": "1",
+                    "actual_time": "0"
                 }
             ]
         },
@@ -59,7 +68,23 @@
             "type": "Digital",
             "category": "Hacken",
             "estimated_time": "N/A",
+            "actual_time": "0",
             "subtasks": []
+        },
+        {
+            "task": "AI Research",
+            "type": "Digital",
+            "category": "Hacken",
+            "estimated_time": "30",
+            "actual_time": "0",
+            "subtasks": [
+                {
+                    "subtask": "R1 Setup",
+                    "status": "In Progress",
+                    "estimated_time": "3",
+                    "actual_time": "1.5"
+                }
+            ]
         }
     ]
 }

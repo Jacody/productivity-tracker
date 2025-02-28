@@ -131,8 +131,4 @@ Mode,Status,Work,Block,Task,Subtask,Timer,Time
 0,1,1,6,Productivity tracker,Build CSV-Reader,0:26:20,15:54:17
 0,0,1,6,Productivity tracker,Build CSV-Reader,0:26:20,15:54:19
 0,0,0,6,Productivity tracker,Build CSV-Reader,0:26:20,16:10:41
-1,0,1,1,Productivity tracker,Build CSV-Reader,0:00:00,19:05:04
-1,1,1,1,Productivity tracker,Build CSV-Reader,0:00:00,19:05:07
-1,0,1,1,Productivity tracker,Build CSV-Reader,0:00:39,19:05:47
-1,1,1,1,Productivity tracker,Build CSV-Reader,0:00:39,19:05:51
-0,0,0,1,Productivity tracker,Build CSV-Reader,0:01:32,19:06:45
+

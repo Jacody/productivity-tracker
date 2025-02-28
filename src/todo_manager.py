@@ -3,20 +3,19 @@ import os
 import json
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QPushButton, 
-    QHeaderView, QDialog, QLineEdit, QComboBox, QLabel, QFormLayout, QDialogButtonBox
+    QHeaderView, QDialog, QLineEdit, QComboBox, QLabel, QFormLayout, QDialogButtonBox, 
+    QDoubleSpinBox
 )
-
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
 
-latest_in_progress = ('Relax', 'Slay')
+latest_in_progress = ('Relax', 'Slay', '0', '0')  # (Task, Subtask, Estimated Time, Actual Time)
 
 def get_latest_in_progress():
     """Getter für die globale Variable"""
     return latest_in_progress
 
 # Basisverzeichnis bestimmen (geht eine Ebene nach oben)
-
 base_dir = os.path.abspath(os.path.join(os.getcwd(), ".."))
 todo_path = os.path.join(base_dir, "data", "todo.json")
 
@@ -71,12 +70,12 @@ class AddSubtaskDialog(QDialog):
         self.subtask_input = QLineEdit()
         self.status_dropdown = QComboBox()
         self.status_dropdown.addItems(["Pending", "In Progress", "Completed"])
-        self.estimated_time_input = QLineEdit()  # Neues Eingabefeld für geschätzte Zeit
+        self.estimated_time_input = QLineEdit()
         
         layout.addRow(QLabel("Task:"), self.task_dropdown)
         layout.addRow(QLabel("Subtask:"), self.subtask_input)
         layout.addRow(QLabel("Status:"), self.status_dropdown)
-        layout.addRow(QLabel("Estimated Time (in minutes):"), self.estimated_time_input)  # Neues Feld
+        layout.addRow(QLabel("Estimated Time (in minutes):"), self.estimated_time_input)
         
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttons.accepted.connect(self.accept)
@@ -90,30 +89,70 @@ class AddSubtaskDialog(QDialog):
         self.task_dropdown.clear()
         tasks = [task["task"] for task in data.get("tasks", [])]
         self.task_dropdown.addItems(tasks)
+
+# Dialog zum Aktualisieren der tatsächlichen Zeit
+class UpdateActualTimeDialog(QDialog):
+    def __init__(self, task_name, subtask_name, current_time, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Tatsächliche Zeit aktualisieren")
+        self.setMinimumWidth(300)
+        layout = QFormLayout()
+        
+        self.task_label = QLabel(task_name)
+        self.subtask_label = QLabel(subtask_name)
+        
+        # Spinner für die tatsächliche Zeit mit Dezimalstellen
+        self.actual_time_input = QDoubleSpinBox()
+        self.actual_time_input.setRange(0, 1000)  # 0 bis 1000 Stunden
+        self.actual_time_input.setDecimals(2)     # Zwei Dezimalstellen
+        self.actual_time_input.setSingleStep(0.25)  # 15-Minuten-Schritte (0.25 Stunden)
+        
+        # Aktuellen Wert einstellen
+        try:
+            self.actual_time_input.setValue(float(current_time))
+        except (ValueError, TypeError):
+            self.actual_time_input.setValue(0.0)
+        
+        layout.addRow(QLabel("Task:"), self.task_label)
+        layout.addRow(QLabel("Subtask:"), self.subtask_label)
+        layout.addRow(QLabel("Tatsächliche Zeit (Stunden):"), self.actual_time_input)
+        
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+        layout.addWidget(self.buttons)
+        
+        self.setLayout(layout)
+    
+    def get_actual_time(self):
+        """Gibt die eingegebene tatsächliche Zeit zurück"""
+        return str(self.actual_time_input.value())
+
 # GUI-Klasse mit QTableWidget
 class TodoApp(QWidget):
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Todo Manager")
-        self.setGeometry(100, 100, 650, 450)
+        self.setGeometry(100, 100, 850, 450)  # Breitere Tabelle für neue Spalten
 
-        #layout = QVBoxLayout()
         # Hauptlayout als vertikales Layout definieren
         self.layout = QVBoxLayout()
 
         # Tabelle erstellen
         self.table = QTableWidget()
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["Task", "Subtask", "Status"])
+        self.table.setColumnCount(5)  # 5 Spalten: Task, Subtask, Status, Est. Time, Actual Time
+        self.table.setHorizontalHeaderLabels(["Task", "Subtask", "Status", "Est. Time", "Actual Time"])
         self.table.verticalHeader().setVisible(False)
-        self.table.setColumnWidth(0, 200)
-        self.table.setColumnWidth(1, 250)
-        self.table.setColumnWidth(2, 150)
+        
+        # Spaltenbreiten
+        self.table.setColumnWidth(0, 200)  # Task
+        self.table.setColumnWidth(1, 200)  # Subtask
+        self.table.setColumnWidth(2, 100)  # Status
+        self.table.setColumnWidth(3, 100)  # Est. Time
+        self.table.setColumnWidth(4, 100)  # Actual Time
+        
         self.layout.addWidget(self.table)
-        # Label für "Current Task"
-        #self.current_task_label = QLabel("Current Task:")
-        #self.layout.addWidget(self.current_task_label)
         
         # Feld für die Anzeige des aktuellen Tasks
         self.current_task_display = QLabel("")  # Startet leer
@@ -123,16 +162,15 @@ class TodoApp(QWidget):
         # Horizontales Layout für Buttons
         button_layout = QHBoxLayout()
         
-        # Zeile 126: Button zum Ändern des Status von Subtasks
+        # Button zum Ändern des Status von Subtasks
         self.change_status_button = QPushButton("Change Status")  
-        self.change_status_button.setFixedSize(150, 40)  # Breite: 150px, Höhe: 40px
-
+        self.change_status_button.setFixedSize(150, 40)
         self.change_status_button.clicked.connect(self.change_status)  
         button_layout.addWidget(self.change_status_button)  
 
         # Button zum Hinzufügen von Subtasks
         self.add_button = QPushButton("Subtask hinzufügen")
-        self.add_button.setFixedSize(150, 40) # Breite: 180px, Höhe: 50px
+        self.add_button.setFixedSize(150, 40)
         self.add_button.clicked.connect(self.add_subtask)
         button_layout.addWidget(self.add_button)
         
@@ -147,9 +185,15 @@ class TodoApp(QWidget):
         self.add_task_button.setFixedSize(150, 40)
         self.add_task_button.clicked.connect(self.add_task)
         button_layout.addWidget(self.add_task_button)
+        
+        # Neuer Button zum Aktualisieren der tatsächlichen Zeit
+        self.update_time_button = QPushButton("Zeiten aktualisieren")
+        self.update_time_button.setFixedSize(150, 40)
+        self.update_time_button.clicked.connect(self.update_actual_time)
+        button_layout.addWidget(self.update_time_button)
 
         # Button-Layout dem Hauptlayout hinzufügen
-        self.layout.addLayout(button_layout)  # Fügt die Buttons in einer Zeile hinzu
+        self.layout.addLayout(button_layout)
 
         self.setLayout(self.layout) 
         self.load_data()
@@ -175,35 +219,53 @@ class TodoApp(QWidget):
                 if i == 0:
                     self.table.setItem(row, 0, QTableWidgetItem(task_name))
                     self.table.item(row, 0).setTextAlignment(Qt.AlignTop)
-                    if task_span > 1:  # Verhindert die Fehlermeldung
+                    if task_span > 1:
                         self.table.setSpan(row, 0, task_span, 1)
-
     
+                # Subtask Name
                 self.table.setItem(row, 1, QTableWidgetItem(subtask["subtask"]))
+                
+                # Status
                 status_item = QTableWidgetItem(subtask["status"])
                 status_item.setTextAlignment(Qt.AlignCenter)
-    
+                
                 if subtask["status"] == "Completed":
                     status_item.setBackground(QColor(144, 238, 144))  # Grün für erledigt
                 elif subtask["status"] == "In Progress":
                     status_item.setBackground(QColor(255, 255, 102))  # Gelb für in Arbeit
-                    latest_in_progress = (task_name, subtask["subtask"])  # Speichern
-                    
-    
+                    # Erweiterte Informationen für in_progress
+                    est_time = subtask.get("estimated_time", "0")
+                    act_time = subtask.get("actual_time", "0")
+                    latest_in_progress = (task_name, subtask["subtask"], est_time, act_time)
+                
                 self.table.setItem(row, 2, status_item)
+                
+                # Geschätzte Zeit
+                est_time_item = QTableWidgetItem(subtask.get("estimated_time", "N/A"))
+                est_time_item.setTextAlignment(Qt.AlignCenter)
+                self.table.setItem(row, 3, est_time_item)
+                
+                # Tatsächliche Zeit
+                act_time_item = QTableWidgetItem(subtask.get("actual_time", "0"))
+                act_time_item.setTextAlignment(Qt.AlignCenter)
+                self.table.setItem(row, 4, act_time_item)
+                
                 row += 1
     
-        # Zeige nur den aktuellsten "In Progress"-Task
+        # Zeige Informationen zum aktuellen "In Progress"-Task
         if latest_in_progress:
-            self.current_task_display.setText(f"<b>Current Task:</b>  {latest_in_progress[0]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  <b>Subtask:</b> {latest_in_progress[1]}")
+            # Format: Task, Subtask, Est. Time, Actual Time
+            task, subtask, est_time, act_time = latest_in_progress
+            self.current_task_display.setText(
+                f"<b>Current Task:</b> {task} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "
+                f"<b>Subtask:</b> {subtask} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "
+                f"<b>Est. Time:</b> {est_time} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "
+                f"<b>Actual Time:</b> {act_time}"
+            )
         else:
             self.current_task_display.setText("Kein aktueller Task in Bearbeitung.")
-        #print(f"Ende von load data:{latest_in_progress}")
-
 
     def add_task(self):
-        print(f"add task triggert:{latest_in_progress}")
-        print(f"getter methode:{get_latest_in_progress()}")
         dialog = AddTaskDialog(self)
         if dialog.exec_():
             task_name = dialog.task_input.text().strip()
@@ -218,19 +280,20 @@ class TodoApp(QWidget):
                     "type": task_type,
                     "category": category,
                     "estimated_time": estimated_time or "N/A",
+                    "actual_time": "0",  # Neues Feld
                     "subtasks": []
                 })
                 
                 save_todo(data)
                 self.load_data()
 
-    def add_subtask(self):  # Korrekte Einrückung!
+    def add_subtask(self):
         dialog = AddSubtaskDialog(self)
         if dialog.exec_():
             task_name = dialog.task_dropdown.currentText().strip()
             subtask_name = dialog.subtask_input.text().strip()
             status = dialog.status_dropdown.currentText()
-            estimated_time = dialog.estimated_time_input.text().strip()  # Neue Zeile für geschätzte Zeit
+            estimated_time = dialog.estimated_time_input.text().strip()
 
             if task_name and subtask_name:
                 data = load_todo()
@@ -239,14 +302,14 @@ class TodoApp(QWidget):
                         task["subtasks"].append({
                             "subtask": subtask_name, 
                             "status": status, 
-                            "estimated_time": estimated_time or "N/A"  # Falls leer, setze "N/A"
+                            "estimated_time": estimated_time or "N/A",
+                            "actual_time": "0"  # Neues Feld
                         })
                         break
                 
                 save_todo(data)
                 self.load_data()
 
-    
     def delete_subtask(self):
         selected_row = self.table.currentRow()
         if selected_row == -1:
@@ -259,7 +322,7 @@ class TodoApp(QWidget):
         
         subtask_name = subtask_item.text()
     
-        # Task-Name suchen (möglicherweise durch setSpan() nicht direkt abrufbar)
+        # Task-Name suchen 
         task_name = None
         for row in range(selected_row, -1, -1):  # Gehe rückwärts durch die Zeilen
             item = self.table.item(row, 0)
@@ -289,19 +352,19 @@ class TodoApp(QWidget):
         save_todo(data)
         self.load_data()
         
-     #Methode zum Ändern des Status
+    # Methode zum Ändern des Status
     def change_status(self):
         selected_row = self.table.currentRow()
         if selected_row == -1:
-            return  # Zeile 275: Keine Zeile ausgewählt
+            return  # Keine Zeile ausgewählt
     
         subtask_item = self.table.item(selected_row, 1)
         if not subtask_item:
-            return  # Zeile 279: Falls kein Subtask vorhanden ist
+            return  # Falls kein Subtask vorhanden ist
     
         subtask_name = subtask_item.text()
     
-        # Zeile 283: Task-Name ermitteln
+        # Task-Name ermitteln
         task_name = None
         for row in range(selected_row, -1, -1):  # Rückwärts durch Zeilen gehen
             item = self.table.item(row, 0)
@@ -310,12 +373,12 @@ class TodoApp(QWidget):
                 break
     
         if not task_name:
-            return  # Zeile 290: Kein gültiger Task gefunden
+            return  # Kein gültiger Task gefunden
     
-        # Zeile 293: Lade JSON-Daten
+        # Lade JSON-Daten
         data = load_todo()
     
-        # Zeile 296: Status-Logik definieren
+        # Status-Logik definieren
         STATUS_CYCLE = ["Pending", "In Progress", "Completed"]
         for task in data["tasks"]:
             if task["task"] == task_name:
@@ -324,19 +387,59 @@ class TodoApp(QWidget):
                         current_status = subtask["status"]
                         next_status = STATUS_CYCLE[(STATUS_CYCLE.index(current_status) + 1) % len(STATUS_CYCLE)]
                         subtask["status"] = next_status
-                        break  # Zeile 304: Status aktualisiert, weitere Suche abbrechen
+                        break
     
-        # Zeile 307: Speichern und GUI aktualisieren
+        # Speichern und GUI aktualisieren
         save_todo(data)
         self.load_data()
-
-
+    
+    # Neue Methode zum Aktualisieren der tatsächlichen Zeit
+    def update_actual_time(self):
+        selected_row = self.table.currentRow()
+        if selected_row == -1:
+            return  # Keine Zeile ausgewählt
+        
+        # Subtask-Infos abrufen
+        subtask_item = self.table.item(selected_row, 1)
+        actual_time_item = self.table.item(selected_row, 4)
+        
+        if not subtask_item:
+            return  # Kein Subtask vorhanden
+        
+        subtask_name = subtask_item.text()
+        current_time = actual_time_item.text() if actual_time_item else "0"
+        
+        # Task-Name ermitteln
+        task_name = None
+        for row in range(selected_row, -1, -1):
+            item = self.table.item(row, 0)
+            if item:
+                task_name = item.text()
+                break
+        
+        if not task_name:
+            return  # Kein Task gefunden
+        
+        # Dialog zum Aktualisieren der Zeit anzeigen
+        dialog = UpdateActualTimeDialog(task_name, subtask_name, current_time, self)
+        if dialog.exec_():
+            new_time = dialog.get_actual_time()
+            
+            # Daten aktualisieren
+            data = load_todo()
+            for task in data["tasks"]:
+                if task["task"] == task_name:
+                    for subtask in task["subtasks"]:
+                        if subtask["subtask"] == subtask_name:
+                            subtask["actual_time"] = new_time
+                            break
+            
+            save_todo(data)
+            self.load_data()
 
 # Anwendung starten
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = TodoApp()
     window.show()
-    #sys.exit(app.exec_())
-    app.exec_()
-
+    sys.exit(app.exec_())

@@ -1,11 +1,10 @@
 import sys
 import todo_manager
 from datetime import datetime, timedelta
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QProgressBar,QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QProgressBar, QHBoxLayout
 from PyQt5.QtCore import QTimer
 from face_detection import FaceDetectorApp
 from csv_logger import CSVLogger  # Importiere den Logger
-from todo_manager import latest_in_progress
 
 
 
@@ -22,9 +21,6 @@ class MainApp(QWidget):
         self.breaktime = timedelta(seconds=15*60)   # 15 Minuten Pausenzeit
         self.block = 1                          # Aktueller Blockzähler
         self.work = 1                           # Pausenstatus
-        #self.task = todo_manager.get_latest_in_progress()[0],       # Aktuelle Task
-        #self.subtask = todo_manager.get_latest_in_progress()[1]               # Aktuelle Subtask
-        
         
         # Fortschrittsbalken hinzufügen
         self.progress_bar = QProgressBar(self)
@@ -54,9 +50,16 @@ class MainApp(QWidget):
         
         # Neues Label für Block-Anzeige
         self.block_label = QLabel(f"Block: {self.block}", self)
-        #self.work_label = QLabel(f"Work: {self.work}", self)
-        self.task_label = QLabel(f"Task: {todo_manager.get_latest_in_progress()[0]}")
-        self.subtask_label = QLabel(f"Subtask: {todo_manager.get_latest_in_progress()[1]}")
+        
+        # Hole die aktuelle Task-Informationen
+        latest_task = todo_manager.get_latest_in_progress()
+        
+        # Labels für die Task-Informationen
+        self.task_label = QLabel(f"Task: {latest_task[0]}")
+        self.subtask_label = QLabel(f"Subtask: {latest_task[1]}")
+        self.est_time_label = QLabel(f"Est. Zeit: {latest_task[2]} Std.")
+        self.act_time_label = QLabel(f"Akt. Zeit: {latest_task[3]} Std.")
+        
         layout = QVBoxLayout()
 
         # Label für Status-Anzeige
@@ -68,12 +71,10 @@ class MainApp(QWidget):
         # Break-Timer-Label
         self.break_timer_label = QLabel("Break-Timer: 00:00", self)
         
-        # Breaktimer Settingns
+        # Breaktimer Settings
         self.break_timer = QTimer(self)
         self.break_timer.timeout.connect(self.update_break_timer)
         self.break_seconds_elapsed = 0
-
-
 
         # Buttons und Labels dem Layout hinzufügen
         layout.addWidget(self.progress_bar)
@@ -100,9 +101,18 @@ class MainApp(QWidget):
 
         layout.addWidget(self.block_label)
         
-        #layout.addWidget(self.work_label)
-        layout.addWidget(self.task_label)
-        layout.addWidget(self.subtask_label)
+        # Task-Informations-Layout
+        task_info_layout = QVBoxLayout()
+        task_info_layout.addWidget(self.task_label)
+        task_info_layout.addWidget(self.subtask_label)
+        
+        # Zeit-Informations-Layout
+        time_info_layout = QHBoxLayout()
+        time_info_layout.addWidget(self.est_time_label)
+        time_info_layout.addWidget(self.act_time_label)
+        
+        layout.addLayout(task_info_layout)
+        layout.addLayout(time_info_layout)
 
         self.setLayout(layout)
 
@@ -122,16 +132,17 @@ class MainApp(QWidget):
         self.break_timer = QTimer(self)
         self.break_timer.timeout.connect(self.update_break_timer)
 
-
         # CSV-Logger initialisieren
-        self.logger = CSVLogger()  
-
-
+        self.logger = CSVLogger()
 
     def close_application(self):
         """Beendet die Anwendung komplett."""
         print("❌ Anwendung wird geschlossen...")
-        self.logger.log( 0, 0, 0, self.block, todo_manager.get_latest_in_progress()[0], todo_manager.get_latest_in_progress()[1], self.get_total_time_str())  # Letzter Log-Eintrag
+        
+        # Hole die aktuelle Task-Informationen für den Log
+        latest_task = todo_manager.get_latest_in_progress()
+        
+        self.logger.log(0, 0, 0, self.block, latest_task[0], latest_task[1], self.get_total_time_str())  # Letzter Log-Eintrag
         QApplication.quit()  # Beendet das PyQt5-Fenster
         sys.exit()  # Beendet das ganze Programm
 
@@ -139,10 +150,13 @@ class MainApp(QWidget):
         """Startet die Gesichtserkennung und speichert die Startzeit."""
         if not self.face_detector_window:
             self.start_time = datetime.now()
-
+            
+            # Hole die aktuelle Task-Informationen für den Log
+            latest_task = todo_manager.get_latest_in_progress()
+            
             log_message = self.get_log_message()
             print(log_message)
-            self.logger.log(self.mode, self.status, self.work, self.block, todo_manager.get_latest_in_progress()[0], todo_manager.get_latest_in_progress()[1], self.get_total_time_str())
+            self.logger.log(self.mode, self.status, self.work, self.block, latest_task[0], latest_task[1], self.get_total_time_str())
 
             self.face_detector_window = FaceDetectorApp()
             self.face_detector_window.status_changed.connect(self.update_status)
@@ -154,17 +168,13 @@ class MainApp(QWidget):
         self.mode = 0 if self.mode == 1 else 1
         self.hold_button.setStyleSheet("background-color: red; color: white;" if self.mode == 0 else "background-color: none;")
 
+        # Hole die aktuelle Task-Informationen für den Log
+        latest_task = todo_manager.get_latest_in_progress()
+        
         log_message = self.get_log_message()
         print(log_message)
-        self.logger.log(self.mode, self.status, self.work, self.block, todo_manager.get_latest_in_progress()[0], todo_manager.get_latest_in_progress()[1], self.get_total_time_str())
-        #print(f"NEUE GOLABL VARIABLE:{todo_manager.get_latest_in_progress()}")
-        self.update_timer_label
-
-
-
-
-
-        
+        self.logger.log(self.mode, self.status, self.work, self.block, latest_task[0], latest_task[1], self.get_total_time_str())
+        self.update_timer_label()
 
     def update_timer_label(self):
         """Aktualisiert die Timer-Anzeige und den Fortschrittsbalken in der GUI."""
@@ -192,11 +202,13 @@ class MainApp(QWidget):
             self.update_labels()  # Aktualisiert die Labels
             self.progress_bar.setValue(0)  # Fortschrittsbalken auf 0 setzen
             self.timer_label.setText("Timer: 00:00")  # Timer-Anzeige sofort zurücksetzen
+            
+            # Hole die aktuelle Task-Informationen für den Log
+            latest_task = todo_manager.get_latest_in_progress()
+            
             log_message = self.get_log_message()
             print(log_message)
-            self.logger.log(self.mode, self.status, self.work, self.block, todo_manager.get_latest_in_progress()[0], todo_manager.get_latest_in_progress()[1], self.get_total_time_str())
-
-
+            self.logger.log(self.mode, self.status, self.work, self.block, latest_task[0], latest_task[1], self.get_total_time_str())
 
     def update_break_timer(self):
         """Break-Timer zählt hoch, wenn work = 0, und aktualisiert die ProgressBar."""
@@ -219,11 +231,13 @@ class MainApp(QWidget):
                 self.break_progress_bar.setValue(0)  # Fortschrittsbalken zurücksetzen
                 self.gui_timer.start(1000)  # Arbeitszeit-Timer erneut starten!
                 self.update_labels()  # Labels aktualisieren
+                
+                # Hole die aktuelle Task-Informationen für den Log
+                latest_task = todo_manager.get_latest_in_progress()
+                
                 log_message = self.get_log_message()
                 print(log_message)
-                self.logger.log(self.mode, self.status, self.work, self.block, todo_manager.get_latest_in_progress()[0], todo_manager.get_latest_in_progress()[1], self.get_total_time_str())
-
-                
+                self.logger.log(self.mode, self.status, self.work, self.block, latest_task[0], latest_task[1], self.get_total_time_str())
 
     def update_status(self, status):
         """Aktualisiert den Status"""
@@ -231,17 +245,26 @@ class MainApp(QWidget):
         status_text = "Gesicht erkannt" if status == 1 else "Kein Gesicht erkannt"
         self.status_label.setText(f"Status: {status_text}")
 
+        # Hole die aktuelle Task-Informationen für den Log
+        latest_task = todo_manager.get_latest_in_progress()
+        
         log_message = self.get_log_message()
         print(log_message)
-        self.logger.log(self.mode, self.status, self.work, self.block, todo_manager.get_latest_in_progress()[0], todo_manager.get_latest_in_progress()[1], self.get_total_time_str())
+        self.logger.log(self.mode, self.status, self.work, self.block, latest_task[0], latest_task[1], self.get_total_time_str())
         self.update_timer_label()
         
     def update_labels(self):
         """Aktualisiert die Labels für Block, Work, Task und Subtask."""
         self.block_label.setText(f"Block: {self.block}")
-        #self.work_label.setText(f"Work: {self.work}")
-        self.task_label.setText(f"Task: {todo_manager.get_latest_in_progress()[1]}")
-        self.subtask_label.setText(f"Subtask: {todo_manager.get_latest_in_progress()[0]}")
+        
+        # Hole die aktuellen Task-Informationen
+        latest_task = todo_manager.get_latest_in_progress()
+        
+        # Aktualisiere die Labels mit den Informationen
+        self.task_label.setText(f"Task: {latest_task[0]}")
+        self.subtask_label.setText(f"Subtask: {latest_task[1]}")
+        self.est_time_label.setText(f"Est. Zeit: {latest_task[2]} Std.")
+        self.act_time_label.setText(f"Akt. Zeit: {latest_task[3]} Std.")
 
     def get_total_time(self):
         """Berechnet die gesamte vergangene Zeit (total_time)"""
@@ -262,14 +285,7 @@ class MainApp(QWidget):
 
     def get_log_message(self):
         """Erzeugt die Log-Nachricht für print und CSV"""
-        return f"Mode= {self.mode} Status= {self.status} Work= {self.work} Block = {self.block} Task = {todo_manager.get_latest_in_progress()[0]} Subtask = {todo_manager.get_latest_in_progress()[1]} Timer= {self.get_total_time_str()} Time= {datetime.now().strftime('%H:%M:%S')}"
-
-
-# Hauptprogramm
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    main_window = MainApp()
-    main_window.show()
-    sys.exit(app.exec_())
-
-
+        # Hole die aktuelle Task-Informationen
+        latest_task = todo_manager.get_latest_in_progress()
+        
+        return f"Mode= {self.mode} Status= {self.status} Work= {self.work} Block = {self.block} Task = {latest_task[0]} Subtask = {latest_task[1]} Timer= {self.get_total_time_str()} Est.Time= {latest_task[2]} Act.Time= {latest_task[3]} Time= {datetime.now().strftime('%H:%M:%S')}"
