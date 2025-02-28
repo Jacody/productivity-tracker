@@ -194,37 +194,19 @@ class BarChartApp(QWidget):
         self.draw_chart()
         
         # Status-Label für letzte Aktualisierung
-        self.last_update_time = datetime.now()
-        self.update_status_label()
+        #self.last_update_time = datetime.now()
 
     def setup_ui(self):
         """Initialisiert die UI-Komponenten"""
         layout = QVBoxLayout(self)
         self.setWindowTitle("Arbeitszeit Visualisierung")
 
-        # Chart und Info in horizontal layout
-        chart_info_layout = QHBoxLayout()
-
         # Matplotlib Canvas vorbereiten
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvas(self.figure)
         
-        # Info-Panel erstellen
-        info_panel = QVBoxLayout()
-        self.labels = {
-            'avg_start': QLabel("Durchschnittsstartzeit: Wird berechnet..."),
-            'total_hours': QLabel("Gesamtstunden: Wird berechnet..."),
-            'last_update': QLabel("Letzte Aktualisierung: -")
-        }
-        
-        for label in self.labels.values():
-            info_panel.addWidget(label)
-
-        # Layouts zusammenfügen
-        chart_info_layout.addWidget(self.canvas, 75)  # 75% Platz für Diagramm
-        chart_info_layout.addLayout(info_panel, 25)   # 25% für Info-Panel
-        
-        layout.addLayout(chart_info_layout)
+        # Nur den Chart anzeigen, keine Info-Panels
+        layout.addWidget(self.canvas)
 
     def setup_timer(self):
         """Richtet den Timer für die automatische Aktualisierung ein"""
@@ -245,97 +227,145 @@ class BarChartApp(QWidget):
         self.draw_chart()
         
         # Update time
-        self.last_update_time = datetime.now()
-        self.update_status_label()
+        #self.last_update_time = datetime.now()
         
         print("Aktualisierung abgeschlossen.")
 
-    def update_status_label(self):
-        """Aktualisiert das Status-Label mit der letzten Aktualisierungszeit"""
-        update_time_str = self.last_update_time.strftime("%H:%M:%S")
-        self.labels['last_update'].setText(f"Letzte Aktualisierung: {update_time_str}")
-
     def draw_chart(self):
-        """Zeichnet das eigentliche Balkendiagramm"""
+        """Zeichnet ein modernes, ansprechenderes Balkendiagramm"""
         self.ax.clear()
-        categories = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        categories = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"]
         x_pos = np.arange(len(categories))
-        bar_width = 0.4
-
+        bar_width = 0.6  # Breitere Balken für ein moderneres Aussehen
+        
+        # Farben für ein modernes Farbschema
+        main_color = '#3498db'  # Blau
+        highlight_color = '#2ecc71'  # Grün für erreichte Stundenziele
+        background_color = '#f8f9fa'  # Heller Hintergrund
+        grid_color = '#A0A0A0'  # Hellgraue Rasterlinien
+        text_color = '#2c3e50'  # Dunkelblau/Grau für Text
+        
+        # Hintergrund einstellen
+        self.figure.patch.set_facecolor(background_color)
+        self.ax.set_facecolor(background_color)
+        
+        # Ziel-Arbeitsstunden (z.B. 8 Stunden pro Tag)
+        target_hours = 8.0
+        
         # Balken für jeden Tag zeichnen
         for day_idx in range(1, 6):  # Index 1-5 für Montag-Freitag
             if day_idx in self.data_dict:
                 day_data = self.data_dict[day_idx]
                 last_valid_bar = None
+                daily_total = 0.0 if day_idx-1 >= len(self.total_actual_times) else self.total_actual_times[day_idx-1]
+                
+                # Farbe basierend auf Zielerfüllung bestimmen
+                bar_color = highlight_color if daily_total >= target_hours else main_color
                 
                 # Alle Arbeitsintervalle des Tages verarbeiten
                 for i, row in enumerate(day_data[:-1]):  # Letzte Zeile ignorieren
                     if row["Start"] != "False" and row["Actual Time"] > 0:
                         start = Config.time_to_decimal(row["Start"])
                         duration = row["Actual Time"] / 3600
-                        last_valid_bar = self.ax.bar(
+                        
+                        # Balken mit abgerundeten Ecken (keine direkte Unterstützung in matplotlib,
+                        # aber mit Alpha-Transparenz und Schatten kann ein moderner Look erzeugt werden)
+                        bar = self.ax.bar(
                             x_pos[day_idx-1], 
                             duration,
                             bottom=start,
                             width=bar_width,
-                            color='royalblue',
-                            alpha=0.7
+                            color=bar_color,
+                            alpha=0.85,
+                            edgecolor='none',
+                            zorder=3
                         )
+                        
+                        last_valid_bar = bar
                 
-                # Gesamtzeit über letztem Balken anzeigen
-                if last_valid_bar and (day_idx-1) < len(self.total_actual_times):
+                # Gesamtzeit über letztem Balken anzeigen mit modernerem Stil
+                if last_valid_bar and day_idx-1 < len(self.total_actual_times):
                     total_time = self.total_actual_times[day_idx-1]
                     bar_top = last_valid_bar[0].get_height() + last_valid_bar[0].get_y()
+                    
+                    # Hintergrundblase für die Stundenanzahl
+                    # Stundenanzahl als einfache schwarze Zahl
                     self.ax.text(
                         x_pos[day_idx-1], 
-                        bar_top + 0.1, 
-                        f"{total_time:.2f}h",
+                        bar_top + 0.8, 
+                        f"{total_time:.1f}h",
                         ha='center', 
-                        va='bottom',
-                        fontsize=9
+                        va='center',
+                        fontsize=10,
+                        fontweight='normal',
+                        color='black',  # Schwarze Zahl
+                        zorder=4
                     )
 
+        # Horizontale Linien für Arbeitszeiten (9-17 Uhr) hervorheben
+        self.ax.axhspan(9, 17, color='#f1f8ff', alpha=0.5, zorder=1)
+        
         # Diagrammformatierung
         self.ax.set_ylim(7, 20)
         self.ax.set_yticks(np.arange(8, 21, 1))
-        self.ax.set_yticklabels([f"{h}:00" for h in range(8, 21)])
+        self.ax.set_yticklabels([f"{h}:00" for h in range(8, 21)], fontsize=9, color=text_color)
         self.ax.set_xticks(x_pos)
-        self.ax.set_xticklabels([f"{day}\n{time}" for day, time in zip(categories, self.start_times)])
-        #self.ax.set_title("Arbeitszeiten der Woche")
-        self.ax.grid(True, axis='y', linestyle='--', alpha=0.7)
         
-        # Statistiken aktualisieren
-        self.update_statistics()
+        # Formatierte X-Achsenbeschriftungen mit Wochentag und Startzeit
+        formatted_labels = []
+        for day, time in zip(categories, self.start_times):
+            if time.strip() not in ['', ' ']:
+                formatted_labels.append(f"{day}\n{time}")
+            else:
+                formatted_labels.append(day)
+        
+        self.ax.set_xticklabels(formatted_labels, fontsize=10, color=text_color)
+        
+        # Dunklere Rasterlinien
+        self.ax.grid(True, axis='y', linestyle='-', alpha=0.4, color=grid_color, zorder=0)
+        
+        # Wochensumme anzeigen
+        week_total = sum(self.total_actual_times)
+        week_goal = target_hours * 5  # 5 Arbeitstage
+        percentage = (week_total / week_goal) * 100 if week_goal > 0 else 0
+        
+        """# Wochensumme als Titel
+        status_color = highlight_color if percentage >= 100 else (main_color if percentage >= 85 else '#e74c3c')
+        self.ax.set_title(
+            f"Weekly Tracking: {week_total:.1f}h von {week_goal}h ({percentage:.0f}%)", 
+            fontsize=12, 
+            fontweight='bold',
+            color=status_color,
+            pad=15
+        )"""
+        
+        # Achsenlinien entfernen für ein cleaneres Aussehen
+        self.ax.spines['top'].set_visible(False)
+        self.ax.spines['right'].set_visible(False)
+        self.ax.spines['left'].set_color(grid_color)
+        self.ax.spines['bottom'].set_color(grid_color)
+        
+        # Heutigen Tag hervorheben
+        today = datetime.today().weekday()  # 0 = Montag, 4 = Freitag
+        if 0 <= today <= 4:  # Nur Wochentage markieren
+            self.ax.get_xticklabels()[today].set_color(highlight_color)
+            self.ax.get_xticklabels()[today].set_fontweight('extra bold')
+        
+        """# Aktualisierungszeitstempel dezent anzeigen
+        update_time = self.last_update_time.strftime("%H:%M:%S")
+        self.figure.text(
+            0.99, 0.01, 
+            f"Aktualisiert: {update_time}", 
+            ha='right', 
+            va='bottom',
+            fontsize=7,
+            color='#aab8c2',
+            style='italic'
+        )
+        """
+        # Layout optimieren
+        self.figure.tight_layout(pad=2.0)
         self.canvas.draw()
-
-    def update_statistics(self):
-        """Aktualisiert die Statistik-Labels mit korrekter Zeitumrechnung"""
-        # Nur gültige Startzeiten berücksichtigen (Leerstrings filtern)
-        valid_times = [Config.time_to_decimal(t) for t in self.start_times if t.strip()]
-        
-        if valid_times:
-            # Durchschnittsberechnung
-            avg_start_decimal = np.mean(valid_times)
-            
-            # Korrekte Umrechnung in Stunden:Minuten
-            hours = int(avg_start_decimal)
-            minutes = int((avg_start_decimal - hours) * 60)
-            avg_start_str = f"{hours:02d}:{minutes:02d}"
-            
-            # Summenberechnung
-            total_hours = sum(self.total_actual_times)
-            
-            self.labels['avg_start'].setText(
-                f"Durchschnittliche Startzeit: {avg_start_str}"
-            )
-            self.labels['total_hours'].setText(
-                f"Gesamte Arbeitszeit: {total_hours:.2f} Stunden"
-            )
-        else:
-            self.labels['avg_start'].setText("Durchschnittliche Startzeit: N/A")
-            self.labels['total_hours'].setText("Gesamte Arbeitszeit: 0.0 Stunden")
-
-
 # Hauptprogramm (nur ausführen, wenn die Datei direkt gestartet wird)
 if __name__ == "__main__":
     app = QApplication(sys.argv)

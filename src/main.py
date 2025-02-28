@@ -40,7 +40,7 @@ class CombinedApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Productivity-Tracker")
-        self.setGeometry(100, 100, 1200, 900)  # Etwas höher für mehr Platz
+        self.setGeometry(100, 100, 900, 1100)  # Etwas höher für mehr Platz
 
         # Zentrales Widget mit vertikalem Layout
         central_widget = QWidget()
@@ -72,21 +72,22 @@ class CombinedApp(QMainWindow):
         csv_widget = CsvVisualizer()
         
         # Elemente zum Layout hinzufügen
-        main_layout.addWidget(top_splitter, 1)  # 2 = doppelte Gewichtung für den oberen Teil
+        main_layout.addWidget(top_splitter, 2)  # 2 = doppelte Gewichtung für den oberen Teil
         main_layout.addWidget(separator)
-        main_layout.addWidget(csv_widget, 2)   # 1 = einfache Gewichtung für die Visualisierung
+        main_layout.addWidget(csv_widget, 3)   # 1 = einfache Gewichtung für die Visualisierung
         
         # Datumsanzeige hinzufügen
-        date_label = QLabel(f"Datum: {self.get_current_date()}")
-        date_label.setAlignment(Qt.AlignRight)
-        main_layout.addWidget(date_label)
+        #date_label = QLabel(f"Datum: {self.get_current_date()}")
+        #date_label.setAlignment(Qt.AlignRight)
+        #main_layout.addWidget(date_label)
         
         self.setCentralWidget(central_widget)
     
+    '''
     def get_current_date(self):
         """Gibt das aktuelle Datum im deutschen Format zurück"""
         from datetime import datetime
-        return datetime.now().strftime("%d.%m.%Y")
+        return datetime.now().strftime("%d.%m.%Y")'''
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

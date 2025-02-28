@@ -4,10 +4,10 @@ import json
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QPushButton, 
     QHeaderView, QDialog, QLineEdit, QComboBox, QLabel, QFormLayout, QDialogButtonBox, 
-    QDoubleSpinBox
+    QDoubleSpinBox, QAbstractItemView
 )
-from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QDrag, QCursor
+from PyQt5.QtCore import Qt, QMimeData, QByteArray, QPoint
 
 latest_in_progress = ('Relax', 'Slay', '0', '0')  # (Task, Subtask, Estimated Time, Actual Time)
 
@@ -75,7 +75,7 @@ class AddSubtaskDialog(QDialog):
         layout.addRow(QLabel("Task:"), self.task_dropdown)
         layout.addRow(QLabel("Subtask:"), self.subtask_input)
         layout.addRow(QLabel("Status:"), self.status_dropdown)
-        layout.addRow(QLabel("Estimated Time (in minutes):"), self.estimated_time_input)
+        layout.addRow(QLabel("Estimated Time (in hours):"), self.estimated_time_input)
         
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttons.accepted.connect(self.accept)
@@ -128,6 +128,13 @@ class UpdateActualTimeDialog(QDialog):
         """Gibt die eingegebene tatsächliche Zeit zurück"""
         return str(self.actual_time_input.value())
 
+# Benutzerdefinierter TableWidgetItem mit Task und Subtask Informationen
+class TaskSubtaskItem(QTableWidgetItem):
+    def __init__(self, text, task, subtask):
+        super().__init__(text)
+        self.task = task
+        self.subtask = subtask
+
 # GUI-Klasse mit QTableWidget
 class TodoApp(QWidget):
     def __init__(self):
@@ -141,62 +148,296 @@ class TodoApp(QWidget):
 
         # Tabelle erstellen
         self.table = QTableWidget()
-        self.table.setColumnCount(5)  # 5 Spalten: Task, Subtask, Status, Est. Time, Actual Time
-        self.table.setHorizontalHeaderLabels(["Task", "Subtask", "Status", "Est. Time", "Actual Time"])
+        self.table.setColumnCount(3)
+        self.table.setHorizontalHeaderLabels(["Task", "Subtask", "Status"])
         self.table.verticalHeader().setVisible(False)
+        
+        # Drag & Drop Einstellungen
+        self.table.setDragEnabled(True)
+        self.table.setAcceptDrops(True)
+        self.table.viewport().setAcceptDrops(True)
+        self.table.setDragDropOverwriteMode(False)
+        self.table.setDropIndicatorShown(True)
+        
+        # Wir verwenden eigenes Drag & Drop statt QAbstractItemView.InternalMove
+        self.table.setDragDropMode(QAbstractItemView.DragDrop)
+        
+        # Für eine saubere Anzeige setzen wir den Selektionsmodus
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         
         # Spaltenbreiten
         self.table.setColumnWidth(0, 200)  # Task
-        self.table.setColumnWidth(1, 200)  # Subtask
+        self.table.setColumnWidth(1, 300)  # Subtask
         self.table.setColumnWidth(2, 100)  # Status
-        self.table.setColumnWidth(3, 100)  # Est. Time
-        self.table.setColumnWidth(4, 100)  # Actual Time
+        
+        # Verbinde Drag & Drop-Ereignisse
+        self.table.startDrag = self.startDrag
+        self.table.dropEvent = self.handleDropEvent
+        self.table.dragEnterEvent = self.handleDragEnterEvent
+        self.table.dragMoveEvent = self.handleDragMoveEvent
         
         self.layout.addWidget(self.table)
         
-        # Feld für die Anzeige des aktuellen Tasks
-        self.current_task_display = QLabel("")  # Startet leer
-        self.current_task_display.setStyleSheet("font-size: 14px; font-weight: normal; padding: 0px; border: 0px solid gray;")
-        self.layout.addWidget(self.current_task_display)
-                
         # Horizontales Layout für Buttons
         button_layout = QHBoxLayout()
+        
+        # Button zum Hinzufügen eines Tasks
+        self.add_task_button = QPushButton("Add Task")
+        self.add_task_button.setFixedSize(150, 40)
+        self.add_task_button.clicked.connect(self.add_task)
+        button_layout.addWidget(self.add_task_button)
+        
+        # Button zum Hinzufügen von Subtasks
+        self.add_button = QPushButton("Add Subtask")
+        self.add_button.setFixedSize(150, 40)
+        self.add_button.clicked.connect(self.add_subtask)
+        button_layout.addWidget(self.add_button)
+        
+        # Button zum Löschen von Subtasks
+        self.delete_button = QPushButton("Delete Subtask")
+        self.delete_button.setFixedSize(150, 40)
+        self.delete_button.clicked.connect(self.delete_subtask)
+        button_layout.addWidget(self.delete_button)
         
         # Button zum Ändern des Status von Subtasks
         self.change_status_button = QPushButton("Change Status")  
         self.change_status_button.setFixedSize(150, 40)
         self.change_status_button.clicked.connect(self.change_status)  
         button_layout.addWidget(self.change_status_button)  
-
-        # Button zum Hinzufügen von Subtasks
-        self.add_button = QPushButton("Subtask hinzufügen")
-        self.add_button.setFixedSize(150, 40)
-        self.add_button.clicked.connect(self.add_subtask)
-        button_layout.addWidget(self.add_button)
         
-        # Button zum Löschen von Subtasks
-        self.delete_button = QPushButton("Subtask löschen")
-        self.delete_button.setFixedSize(150, 40)
-        self.delete_button.clicked.connect(self.delete_subtask)
-        button_layout.addWidget(self.delete_button)
-        
-        # Button zum Hinzufügen eines Tasks
-        self.add_task_button = QPushButton("Task hinzufügen")
-        self.add_task_button.setFixedSize(150, 40)
-        self.add_task_button.clicked.connect(self.add_task)
-        button_layout.addWidget(self.add_task_button)
-        
-        # Neuer Button zum Aktualisieren der tatsächlichen Zeit
-        self.update_time_button = QPushButton("Zeiten aktualisieren")
-        self.update_time_button.setFixedSize(150, 40)
-        self.update_time_button.clicked.connect(self.update_actual_time)
-        button_layout.addWidget(self.update_time_button)
-
         # Button-Layout dem Hauptlayout hinzufügen
         self.layout.addLayout(button_layout)
 
+        #Feld für die Anzeige des aktuellen Tasks
+        self.current_task_display = QLabel("")  # Startet leer
+        self.current_task_display.setStyleSheet("font-size: 14px; font-weight: normal; padding: 0px; border: 0px solid gray;")
+        self.layout.addWidget(self.current_task_display)
+                
         self.setLayout(self.layout) 
         self.load_data()
+        
+    def startDrag(self, actions):
+        indexes = self.table.selectedIndexes()
+        if len(indexes) > 0:
+            index = indexes[0]
+            row = index.row()
+            column = index.column()
+            
+            # Task ermitteln
+            task_name = None
+            for r in range(row, -1, -1):
+                item = self.table.item(r, 0)
+                if item:
+                    task_name = item.text()
+                    break
+            
+            if task_name:
+                # Prüfen ob Task oder Subtask gezogen wird
+                if column == 0 and self.table.item(row, 0) and self.table.item(row, 0).text() == task_name:
+                    # Es wird ein Task gezogen (erste Zeile eines Tasks)
+                    
+                    # Alle Subtasks des Tasks finden
+                    task_data = None
+                    todo_data = load_todo()
+                    for task in todo_data["tasks"]:
+                        if task["task"] == task_name:
+                            task_data = task
+                            break
+                    
+                    if task_data:
+                        # Drag-Daten für Task erstellen
+                        data = {
+                            "type": "task",
+                            "task": task_name,
+                            "row": row,
+                            "task_data": task_data
+                        }
+                        
+                        # MIME-Daten für Drag erstellen
+                        mime_data = QMimeData()
+                        mime_data.setData("application/x-todo-task", QByteArray(json.dumps(data).encode()))
+                        
+                        # Drag starten
+                        drag = QDrag(self.table)
+                        drag.setMimeData(mime_data)
+                        drag.setHotSpot(QPoint(10, 10))
+                        
+                        # Drag ausführen
+                        result = drag.exec_(Qt.MoveAction)
+                
+                # Subtask ziehen
+                else:
+                    # Subtask-Infos
+                    subtask_item = self.table.item(row, 1)
+                    if subtask_item:
+                        subtask_name = subtask_item.text()
+                        
+                        # Drag-Daten erstellen
+                        data = {
+                            "type": "subtask",
+                            "task": task_name,
+                            "subtask": subtask_name,
+                            "row": row
+                        }
+                        
+                        # MIME-Daten für Drag erstellen
+                        mime_data = QMimeData()
+                        mime_data.setData("application/x-todo-subtask", QByteArray(json.dumps(data).encode()))
+                        
+                        # Drag starten
+                        drag = QDrag(self.table)
+                        drag.setMimeData(mime_data)
+                        drag.setHotSpot(QPoint(10, 10))
+                        
+                        # Drag ausführen
+                        result = drag.exec_(Qt.MoveAction)
+    
+    def handleDragEnterEvent(self, event):
+        if event.mimeData().hasFormat("application/x-todo-subtask") or event.mimeData().hasFormat("application/x-todo-task"):
+            event.accept()
+        else:
+            event.ignore()
+    
+    def handleDragMoveEvent(self, event):
+        if event.mimeData().hasFormat("application/x-todo-subtask") or event.mimeData().hasFormat("application/x-todo-task"):
+            event.setDropAction(Qt.MoveAction)
+            event.accept()
+        else:
+            event.ignore()
+    
+    def handleDropEvent(self, event):
+        pos = event.pos()
+        drop_index = self.table.indexAt(pos)
+        drop_row = drop_index.row()
+        
+        # Nur fortfahren, wenn eine gültige Zielzeile ausgewählt wurde
+        if drop_row >= 0:
+            # Behandlung von Subtask-Drag & Drop
+            if event.mimeData().hasFormat("application/x-todo-subtask"):
+                # Daten aus MIME-Daten extrahieren
+                mime_data = event.mimeData().data("application/x-todo-subtask")
+                drag_data = json.loads(bytes(mime_data).decode())
+                
+                source_task = drag_data["task"]
+                source_subtask = drag_data["subtask"]
+                source_row = drag_data["row"]
+                
+                # Task für die Zielzeile bestimmen
+                target_task = None
+                for r in range(drop_row, -1, -1):
+                    item = self.table.item(r, 0)
+                    if item:
+                        target_task = item.text()
+                        break
+                
+                # Nur wenn Quelle und Ziel im gleichen Task sind
+                if source_task == target_task:
+                    # JSON-Daten laden
+                    todo_data = load_todo()
+                    
+                    # Subtask finden und verschieben
+                    for task in todo_data["tasks"]:
+                        if task["task"] == source_task:
+                            # Subtask finden und aus der Liste entfernen
+                            subtask_to_move = None
+                            subtask_index = None
+                            for i, subtask in enumerate(task["subtasks"]):
+                                if subtask["subtask"] == source_subtask:
+                                    subtask_to_move = subtask
+                                    subtask_index = i
+                                    break
+                            
+                            if subtask_to_move and subtask_index is not None:
+                                # Subtask aus der Liste entfernen
+                                task["subtasks"].pop(subtask_index)
+                                
+                                # Zielposition bestimmen
+                                target_subtask_name = None
+                                if self.table.item(drop_row, 1):
+                                    target_subtask_name = self.table.item(drop_row, 1).text()
+                                
+                                # Zielposition im task["subtasks"] Array finden
+                                target_index = 0
+                                for i, subtask in enumerate(task["subtasks"]):
+                                    if subtask["subtask"] == target_subtask_name:
+                                        target_index = i
+                                        # Wenn wir nach unten ziehen, erhöhen wir den Index
+                                        if source_row < drop_row:
+                                            target_index += 1
+                                        break
+                                
+                                # Füge an der Zielposition ein
+                                task["subtasks"].insert(target_index, subtask_to_move)
+                                
+                                # Daten speichern
+                                save_todo(todo_data)
+                                
+                                # GUI aktualisieren
+                                self.load_data()
+                            
+                            break
+                
+                event.accept()
+            
+            # Behandlung von Task-Drag & Drop
+            elif event.mimeData().hasFormat("application/x-todo-task"):
+                # Daten aus MIME-Daten extrahieren
+                mime_data = event.mimeData().data("application/x-todo-task")
+                drag_data = json.loads(bytes(mime_data).decode())
+                
+                source_task = drag_data["task"]
+                source_row = drag_data["row"]
+                task_data = drag_data["task_data"]
+                
+                # Task für die Zielzeile bestimmen
+                target_task = None
+                for r in range(drop_row, -1, -1):
+                    item = self.table.item(r, 0)
+                    if item:
+                        target_task = item.text()
+                        break
+                
+                if target_task and target_task != source_task:  # Nur wenn auf einen anderen Task gezogen
+                    # JSON-Daten laden
+                    todo_data = load_todo()
+                    
+                    # Task finden und aus der Liste entfernen
+                    task_index = None
+                    for i, task in enumerate(todo_data["tasks"]):
+                        if task["task"] == source_task:
+                            task_index = i
+                            break
+                    
+                    if task_index is not None:
+                        # Task aus der Liste entfernen
+                        todo_data["tasks"].pop(task_index)
+                        
+                        # Zielposition bestimmen
+                        target_task_index = None
+                        for i, task in enumerate(todo_data["tasks"]):
+                            if task["task"] == target_task:
+                                target_task_index = i
+                                # Wenn wir nach unten ziehen, erhöhen wir den Index
+                                if source_row < drop_row:
+                                    target_task_index += 1
+                                break
+                        
+                        if target_task_index is not None:
+                            # Füge an der Zielposition ein
+                            todo_data["tasks"].insert(target_task_index, task_data)
+                            
+                            # Daten speichern
+                            save_todo(todo_data)
+                            
+                            # GUI aktualisieren
+                            self.load_data()
+                
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.ignore()
 
     def load_data(self):
         global latest_in_progress  # Zugriff auf die globale Variable
@@ -217,13 +458,15 @@ class TodoApp(QWidget):
     
             for i, subtask in enumerate(subtasks):
                 if i == 0:
-                    self.table.setItem(row, 0, QTableWidgetItem(task_name))
-                    self.table.item(row, 0).setTextAlignment(Qt.AlignTop)
+                    task_item = QTableWidgetItem(task_name)
+                    task_item.setTextAlignment(Qt.AlignTop)
+                    self.table.setItem(row, 0, task_item)
                     if task_span > 1:
                         self.table.setSpan(row, 0, task_span, 1)
     
-                # Subtask Name
-                self.table.setItem(row, 1, QTableWidgetItem(subtask["subtask"]))
+                # Subtask Name mit zusätzlichen Informationen
+                subtask_item = TaskSubtaskItem(subtask["subtask"], task_name, subtask["subtask"])
+                self.table.setItem(row, 1, subtask_item)
                 
                 # Status
                 status_item = QTableWidgetItem(subtask["status"])
@@ -239,16 +482,6 @@ class TodoApp(QWidget):
                     latest_in_progress = (task_name, subtask["subtask"], est_time, act_time)
                 
                 self.table.setItem(row, 2, status_item)
-                
-                # Geschätzte Zeit
-                est_time_item = QTableWidgetItem(subtask.get("estimated_time", "N/A"))
-                est_time_item.setTextAlignment(Qt.AlignCenter)
-                self.table.setItem(row, 3, est_time_item)
-                
-                # Tatsächliche Zeit
-                act_time_item = QTableWidgetItem(subtask.get("actual_time", "0"))
-                act_time_item.setTextAlignment(Qt.AlignCenter)
-                self.table.setItem(row, 4, act_time_item)
                 
                 row += 1
     
@@ -280,7 +513,7 @@ class TodoApp(QWidget):
                     "type": task_type,
                     "category": category,
                     "estimated_time": estimated_time or "N/A",
-                    "actual_time": "0",  # Neues Feld
+                    "actual_time": "0",
                     "subtasks": []
                 })
                 
@@ -303,7 +536,7 @@ class TodoApp(QWidget):
                             "subtask": subtask_name, 
                             "status": status, 
                             "estimated_time": estimated_time or "N/A",
-                            "actual_time": "0"  # Neues Feld
+                            "actual_time": "0"
                         })
                         break
                 
@@ -392,50 +625,6 @@ class TodoApp(QWidget):
         # Speichern und GUI aktualisieren
         save_todo(data)
         self.load_data()
-    
-    # Neue Methode zum Aktualisieren der tatsächlichen Zeit
-    def update_actual_time(self):
-        selected_row = self.table.currentRow()
-        if selected_row == -1:
-            return  # Keine Zeile ausgewählt
-        
-        # Subtask-Infos abrufen
-        subtask_item = self.table.item(selected_row, 1)
-        actual_time_item = self.table.item(selected_row, 4)
-        
-        if not subtask_item:
-            return  # Kein Subtask vorhanden
-        
-        subtask_name = subtask_item.text()
-        current_time = actual_time_item.text() if actual_time_item else "0"
-        
-        # Task-Name ermitteln
-        task_name = None
-        for row in range(selected_row, -1, -1):
-            item = self.table.item(row, 0)
-            if item:
-                task_name = item.text()
-                break
-        
-        if not task_name:
-            return  # Kein Task gefunden
-        
-        # Dialog zum Aktualisieren der Zeit anzeigen
-        dialog = UpdateActualTimeDialog(task_name, subtask_name, current_time, self)
-        if dialog.exec_():
-            new_time = dialog.get_actual_time()
-            
-            # Daten aktualisieren
-            data = load_todo()
-            for task in data["tasks"]:
-                if task["task"] == task_name:
-                    for subtask in task["subtasks"]:
-                        if subtask["subtask"] == subtask_name:
-                            subtask["actual_time"] = new_time
-                            break
-            
-            save_todo(data)
-            self.load_data()
 
 # Anwendung starten
 if __name__ == "__main__":

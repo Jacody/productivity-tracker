@@ -1,11 +1,11 @@
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QPainter, QColor, QPen, QFont
-from PyQt5.QtCore import Qt, QRectF, QTimer
+from PyQt5.QtGui import QPainter, QColor, QPen, QFont, QBrush
+from PyQt5.QtCore import Qt, QRectF, QTimer, QPointF
 
 class CircularProgressWidget(QWidget):
     """
     Ein benutzerdefiniertes Widget, das einen kreisförmigen Fortschrittsbalken darstellt.
-    Der Balken füllt sich wie ein Uhrzeiger, beginnend bei 12 Uhr und läuft im Uhrzeigersinn.
+    Der Balken füllt sich wie ein Tortendiagramm, beginnend bei 12 Uhr und läuft im Uhrzeigersinn.
     Nach 3/4 des Kreises wechselt die Farbe von Blau zu Rot, um die Pausenzeit zu signalisieren.
     """
     
@@ -66,7 +66,7 @@ class CircularProgressWidget(QWidget):
         self.update()
     
     def paintEvent(self, event):
-        """Malt das Widget mit dem kreisförmigen Fortschrittsbalken."""
+        """Malt das Widget mit dem kreisförmigen Fortschrittsbalken als Tortendiagramm."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         
@@ -83,39 +83,37 @@ class CircularProgressWidget(QWidget):
         painter.setBrush(self.bg_color)
         painter.drawEllipse(QRectF(center_x - radius, center_y - radius, diameter, diameter))
         
-        # Fortschrittskreis zeichnen
-        pen_width = 25  # Dicke des Kreisbogens
-        
         # Bestimme, ob wir in der Arbeits- oder Pausenzeit sind
         is_break_time = self.current_time > self.work_time_max
         
-        # Arbeitszeit zeichnen (bis zu 3/4 des Kreises)
         if self.current_time > 0:
-            # Zuerst die Arbeitszeit zeichnen (blau)
+            # Kreisausschnitt für die Arbeitszeit zeichnen
             work_time_to_draw = min(self.current_time, self.work_time_max)
             if work_time_to_draw > 0:
-                painter.setPen(QPen(self.work_color, pen_width, Qt.SolidLine, Qt.RoundCap))
-                # Startwinkel: 90 Grad (oben), nach rechts drehend (im Uhrzeigersinn)
-                start_angle = 90 * 16
-                # Spanwinkel: Wie viel vom Kreis abgedeckt wird (im Uhrzeigersinn, negativ)
-                span_angle = -(work_time_to_draw / self.total_time_max * 360 * 16)
+                # Winkel berechnen (in Grad)
+                angle = work_time_to_draw / self.total_time_max * 360
                 
-                rect = QRectF(center_x - radius + pen_width/2, center_y - radius + pen_width/2, 
-                            diameter - pen_width, diameter - pen_width)
-                painter.drawArc(rect, start_angle, span_angle)
+                # Zeichnen des Kreisausschnitts
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(self.work_color))
+                self.drawPieSlice(painter, center_x, center_y, radius, 90, -angle)
             
-            # Dann die Pausenzeit zeichnen (rot), wenn wir bereits in der Pausenzeit sind
+            # Kreisausschnitt für die Pausenzeit zeichnen
             if is_break_time:
-                painter.setPen(QPen(self.break_color, pen_width, Qt.SolidLine, Qt.RoundCap))
-                # Startwinkel: 90 - (3/4 * 360) = -180 Grad (bei 9 Uhr Position)
-                start_angle = int(90 - (self.work_time_ratio * 360)) * 16
-                # Spanwinkel für die Pausenzeit
                 break_time = self.current_time - self.work_time_max
-                span_angle = -(break_time / self.total_time_max * 360 * 16)
+                break_angle = break_time / self.total_time_max * 360
+                work_angle = self.work_time_max / self.total_time_max * 360
                 
-                rect = QRectF(center_x - radius + pen_width/2, center_y - radius + pen_width/2, 
-                            diameter - pen_width, diameter - pen_width)
-                painter.drawArc(rect, start_angle, span_angle)
+                # Zeichnen des Pausenzeit-Kreisausschnitts
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(self.break_color))
+                self.drawPieSlice(painter, center_x, center_y, radius, 90 - work_angle, -break_angle)
+        
+        # Inneren weißen Kreis zeichnen (für ein "Donut"-Erscheinungsbild)
+        inner_radius = radius * 0.7  # 70% des äußeren Radius
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(Qt.white))
+        painter.drawEllipse(QRectF(center_x - inner_radius, center_y - inner_radius, inner_radius * 2, inner_radius * 2))
         
         # Zeittext zeichnen
         painter.setPen(Qt.black)
@@ -130,6 +128,22 @@ class CircularProgressWidget(QWidget):
         font = QFont("Arial", 14, QFont.Bold)
         painter.setFont(font)
         painter.drawText(QRectF(0, height/2 + 30, width, 30), Qt.AlignCenter, status_text)
+    
+    def drawPieSlice(self, painter, center_x, center_y, radius, start_angle, span_angle):
+        """
+        Zeichnet einen Kreisausschnitt (Pie Slice) mit dem angegebenen Mittelpunkt,
+        Radius, Startwinkel und Spanwinkel.
+        
+        :param painter: QPainter-Objekt
+        :param center_x: x-Koordinate des Mittelpunkts
+        :param center_y: y-Koordinate des Mittelpunkts
+        :param radius: Radius des Kreises
+        :param start_angle: Startwinkel in Grad (0 = rechts, 90 = oben)
+        :param span_angle: Spanwinkel in Grad (positiv = gegen den Uhrzeigersinn)
+        """
+        # Den Tortenausschnitt direkt mit drawPie zeichnen
+        rect = QRectF(center_x - radius, center_y - radius, radius * 2, radius * 2)
+        painter.drawPie(rect, int(start_angle * 16), int(span_angle * 16))
     
     def start_test_animation(self):
         """Startet eine Test-Animation (nur für Demonstrationszwecke)."""

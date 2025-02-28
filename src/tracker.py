@@ -1,18 +1,18 @@
 import sys
 import todo_manager
 from datetime import datetime, timedelta
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QProgressBar, QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout
 from PyQt5.QtCore import QTimer
 from face_detection import FaceDetectorApp
 from csv_logger import CSVLogger  # Importiere den Logger
-
+from circular_progress import CircularProgressWidget  # Importiere den kreisförmigen Fortschrittsbalken
 
 
 class MainApp(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Face Detection Launcher")
-        self.setGeometry(200, 200, 400, 300)
+        self.setGeometry(200, 200, 500, 600)  # Etwas größer für die kreisförmigen Widgets
 
         # Layout erstellen
         layout = QVBoxLayout
@@ -22,28 +22,24 @@ class MainApp(QWidget):
         self.block = 1                          # Aktueller Blockzähler
         self.work = 1                           # Pausenstatus
         
-        # Fortschrittsbalken hinzufügen
-        self.progress_bar = QProgressBar(self)
-        self.progress_bar.setMinimum(0)  # Startwert
-        self.progress_bar.setMaximum(self.blocktime.total_seconds())  # Maximalwert entspricht Blockzeit in Sekunden
-        self.progress_bar.setValue(0)  # Anfangswert
-
-        # Fortschrittsbalken für den Break-Timer
-        self.break_progress_bar = QProgressBar(self)
-        self.break_progress_bar.setMinimum(0)
-        self.break_progress_bar.setMaximum(self.breaktime.total_seconds())  # Maximale Sekunden für Pause
-        self.break_progress_bar.setValue(0)  # Startet bei 0
+        # Kreisförmiger Fortschrittsbalken für Arbeitszeit hinzufügen
+        self.progress_circle = CircularProgressWidget(self)
+        self.progress_circle.set_max_times(
+            total_max=int(self.blocktime.total_seconds() + self.breaktime.total_seconds()),
+            work_ratio=self.blocktime.total_seconds() / (self.blocktime.total_seconds() + self.breaktime.total_seconds())
+        )
+        self.progress_circle.set_current_time(0)  # Anfangswert
         
         # "Start"-Button
         self.start_button = QPushButton("Start", self)
         self.start_button.clicked.connect(self.start_face_detection)
 
         # "Hold"-Button
-        self.hold_button = QPushButton("Hold", self)
+        self.hold_button = QPushButton("Pause", self)
         self.hold_button.setStyleSheet("background-color: none;")
         self.hold_button.clicked.connect(self.toggle_hold_mode)
 
-        # "End"-Button (NEU)
+        # "End"-Button
         self.end_button = QPushButton("End", self)
         self.end_button.setStyleSheet("background-color: none;")  
         self.end_button.clicked.connect(self.close_application)
@@ -54,34 +50,20 @@ class MainApp(QWidget):
         # Hole die aktuelle Task-Informationen
         latest_task = todo_manager.get_latest_in_progress()
         
-        # Labels für die Task-Informationen
-        self.task_label = QLabel(f"Task: {latest_task[0]}")
-        self.subtask_label = QLabel(f"Subtask: {latest_task[1]}")
-        self.est_time_label = QLabel(f"Est. Zeit: {latest_task[2]} Std.")
-        self.act_time_label = QLabel(f"Akt. Zeit: {latest_task[3]} Std.")
-        
         layout = QVBoxLayout()
 
         # Label für Status-Anzeige
-        self.status_label = QLabel("Status: Nicht gestartet", self)
-
-        # Timer-Label
-        self.timer_label = QLabel("Timer: 00:00", self)
+        self.status_label = QLabel("Status: Not started yet", self)
         
-        # Break-Timer-Label
-        self.break_timer_label = QLabel("Break-Timer: 00:00", self)
+        # Die Zeit-Labels werden nicht mehr benötigt, da sie im CircularProgressWidget angezeigt werden
         
         # Breaktimer Settings
         self.break_timer = QTimer(self)
         self.break_timer.timeout.connect(self.update_break_timer)
         self.break_seconds_elapsed = 0
 
-        # Buttons und Labels dem Layout hinzufügen
-        layout.addWidget(self.progress_bar)
-        layout.addWidget(self.timer_label)
-        layout.addWidget(self.break_progress_bar)
-        layout.addWidget(self.break_timer_label)
-        layout.addWidget(self.status_label)
+        # Kreisförmigen Fortschrittsbalken dem Layout hinzufügen
+        layout.addWidget(self.progress_circle)
         
         # Horizontal Layout für die Buttons
         button_layout = QHBoxLayout()
@@ -97,22 +79,14 @@ class MainApp(QWidget):
         button_layout.addWidget(self.hold_button)
         button_layout.addWidget(self.end_button)
         
-        layout.addLayout(button_layout)  # Anstatt die Buttons direkt in layout hinzuzufügen
-
-        layout.addWidget(self.block_label)
+        layout.addLayout(button_layout)
         
-        # Task-Informations-Layout
-        task_info_layout = QVBoxLayout()
-        task_info_layout.addWidget(self.task_label)
-        task_info_layout.addWidget(self.subtask_label)
-        
-        # Zeit-Informations-Layout
-        time_info_layout = QHBoxLayout()
-        time_info_layout.addWidget(self.est_time_label)
-        time_info_layout.addWidget(self.act_time_label)
-        
-        layout.addLayout(task_info_layout)
-        layout.addLayout(time_info_layout)
+        # Status- und Block-Informations-Layout (nebeneinander am Ende)
+        status_block_layout = QHBoxLayout()
+        status_block_layout.addWidget(self.status_label)
+        status_block_layout.addStretch(1)  # Fügt Abstand ein, um Block-Label nach rechts zu schieben
+        status_block_layout.addWidget(self.block_label)
+        layout.addLayout(status_block_layout)
 
         self.setLayout(layout)
 
@@ -181,15 +155,16 @@ class MainApp(QWidget):
         time_str = self.get_total_time_str()
         if len(time_str.split(':')) == 3:
             time_str = ':'.join(time_str.split(':')[1:])  # Entfernt die Stunden
-        self.timer_label.setText(f"Timer: {time_str}")
+        # Kein Timer-Label mehr zu aktualisieren, da es im CircularProgressWidget angezeigt wird
 
-        # Berechne den Fortschritt als Verhältnis von total_time zu blocktime
+        # Berechne den Fortschritt als Verhältnis
         total_seconds = self.get_total_time().total_seconds()
         max_seconds = self.blocktime.total_seconds()
 
-        progress_value = min(total_seconds, max_seconds)  # Begrenze auf max. Blockzeit
-        self.progress_bar.setValue(progress_value)  # Fortschritt setzen
-
+        # Aktualisiere den kreisförmigen Fortschrittsbalken
+        if self.work == 1:  # Arbeitszeit
+            self.progress_circle.set_current_time(int(total_seconds))
+        
         # Prüfe, ob die Arbeitszeit vorbei ist
         if total_seconds >= max_seconds:
             self.block += 1  # Block hochzählen
@@ -200,8 +175,7 @@ class MainApp(QWidget):
             self.gui_timer.stop()  # Arbeits-Timer stoppen
             self.break_timer.start(1000)  # Break-Timer starten!
             self.update_labels()  # Aktualisiert die Labels
-            self.progress_bar.setValue(0)  # Fortschrittsbalken auf 0 setzen
-            self.timer_label.setText("Timer: 00:00")  # Timer-Anzeige sofort zurücksetzen
+            # Timer-Anzeige wird jetzt im CircularProgressWidget angezeigt
             
             # Hole die aktuelle Task-Informationen für den Log
             latest_task = todo_manager.get_latest_in_progress()
@@ -211,24 +185,24 @@ class MainApp(QWidget):
             self.logger.log(self.mode, self.status, self.work, self.block, latest_task[0], latest_task[1], self.get_total_time_str())
 
     def update_break_timer(self):
-        """Break-Timer zählt hoch, wenn work = 0, und aktualisiert die ProgressBar."""
+        """Break-Timer zählt hoch, wenn work = 0, und aktualisiert den kreisförmigen Fortschrittsbalken."""
         if self.work == 0:
             self.break_seconds_elapsed += 1  # Sekunde hinzufügen
             minutes = self.break_seconds_elapsed // 60
             seconds = self.break_seconds_elapsed % 60
-            self.break_timer_label.setText(f"Break-Timer: {minutes:02}:{seconds:02}")
+            # Pausenzeit wird jetzt im CircularProgressWidget angezeigt
 
-            # Fortschrittsbalken für Pause aktualisieren
-            progress_value = min(self.break_seconds_elapsed, self.breaktime.total_seconds())
-            self.break_progress_bar.setValue(progress_value)
+            # Kreisförmigen Fortschrittsbalken für Pause aktualisieren
+            work_seconds = self.blocktime.total_seconds()
+            self.progress_circle.set_current_time(int(work_seconds + self.break_seconds_elapsed))
 
             # Prüfen, ob die Pause vorbei ist
             if self.break_seconds_elapsed >= self.breaktime.total_seconds():
                 self.work = 1  # Wechsel zurück zu Work
                 self.break_timer.stop()  # Break-Timer stoppen
                 self.break_seconds_elapsed = 0  # Break-Timer zurücksetzen
-                self.break_timer_label.setText("Break-Timer: 00:00")
-                self.break_progress_bar.setValue(0)  # Fortschrittsbalken zurücksetzen
+                # Pausenzeit wird jetzt im CircularProgressWidget angezeigt
+                self.progress_circle.set_current_time(0)  # Fortschrittsbalken zurücksetzen
                 self.gui_timer.start(1000)  # Arbeitszeit-Timer erneut starten!
                 self.update_labels()  # Labels aktualisieren
                 
@@ -242,7 +216,7 @@ class MainApp(QWidget):
     def update_status(self, status):
         """Aktualisiert den Status"""
         self.status = status
-        status_text = "Gesicht erkannt" if status == 1 else "Kein Gesicht erkannt"
+        status_text = "✅ Working" if status == 1 else "❌ Not Working"
         self.status_label.setText(f"Status: {status_text}")
 
         # Hole die aktuelle Task-Informationen für den Log
@@ -257,14 +231,7 @@ class MainApp(QWidget):
         """Aktualisiert die Labels für Block, Work, Task und Subtask."""
         self.block_label.setText(f"Block: {self.block}")
         
-        # Hole die aktuellen Task-Informationen
-        latest_task = todo_manager.get_latest_in_progress()
-        
-        # Aktualisiere die Labels mit den Informationen
-        self.task_label.setText(f"Task: {latest_task[0]}")
-        self.subtask_label.setText(f"Subtask: {latest_task[1]}")
-        self.est_time_label.setText(f"Est. Zeit: {latest_task[2]} Std.")
-        self.act_time_label.setText(f"Akt. Zeit: {latest_task[3]} Std.")
+        # Der kreisförmige Fortschrittsbalken zeigt bereits den Arbeit/Pause-Status an
 
     def get_total_time(self):
         """Berechnet die gesamte vergangene Zeit (total_time)"""
