@@ -1,6 +1,7 @@
 import csv
 import os
 import sys
+import json
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import numpy as np
@@ -53,6 +54,54 @@ class Config:
         except:
             return 0.0
 
+# Todo-Manager für die Verwaltung der Todo-Daten
+class TodoManager:
+    """Klasse für die Verwaltung der Todo-Daten"""
+    
+    def __init__(self, base_dir):
+        self.base_dir = base_dir
+        self.todo_path = os.path.join(base_dir, "data", "todo.json")
+        self.todo_data = self.load_todo()
+        self.task_info = self.prepare_task_info()
+    
+    def load_todo(self):
+        """Lädt die Todo-Datei"""
+        if os.path.exists(self.todo_path):
+            print(f"Loading Todo file: {self.todo_path}")
+            try:
+                with open(self.todo_path, "r", encoding="utf-8") as file:
+                    return json.load(file)
+            except Exception as e:
+                print(f"Error loading todo file: {e}")
+                return {"tasks": []}
+        else:
+            print(f"Todo file not found: {self.todo_path}")
+            return {"tasks": []}  # Falls keine Datei existiert, leere Struktur zurückgeben
+    
+    def prepare_task_info(self):
+        """Bereitet ein Dictionary mit Task-Informationen für schnellen Zugriff vor"""
+        task_info = {}
+        for task in self.todo_data.get("tasks", []):
+            task_name = task.get("task", "")
+            if task_name:
+                task_info[task_name] = {
+                    "type": task.get("type", "N/A"),
+                    "category": task.get("category", "N/A"),
+                    "estimated_time": task.get("estimated_time", "N/A"),
+                    "color": task.get("color", "#cccccc"),  # Standardfarbe, falls keine angegeben
+                    "subtasks": {}
+                }
+                
+                # Subtask-Informationen vorbereiten
+                for subtask in task.get("subtasks", []):
+                    subtask_name = subtask.get("subtask", "")
+                    if subtask_name:
+                        task_info[task_name]["subtasks"][subtask_name] = {
+                            "status": subtask.get("status", "N/A"),
+                            "estimated_time": subtask.get("estimated_time", "N/A")
+                        }
+        
+        return task_info
 
 # Datenverarbeitung
 class DataProcessor:
@@ -216,6 +265,144 @@ class DataProcessor:
         print("\n" + "=" * 50 + "\n")
     
     @staticmethod
+    def print_enhanced_task_statistics(task_totals, subtask_totals, todo_manager):
+        """Druckt eine erweiterte formatierte Übersicht der Task- und Subtask-Zeiten mit Todo-Informationen"""
+        print("\n==== Erweiterte Aufgaben-Statistik ====\n")
+        
+        # Sortiere nach der aufgewendeten Zeit (absteigend)
+        sorted_tasks = sorted(task_totals.items(), key=lambda x: x[1], reverse=True)
+        
+        print("Gesamtzeit pro Aufgabe mit Todo-Daten:")
+        print("====================================")
+        task_rows = []
+        for task, seconds in sorted_tasks:
+            # Zeit formatieren
+            hours = seconds / 3600
+            minutes = (seconds % 3600) / 60
+            time_str = f"{int(hours)}h {int(minutes)}m"
+            
+            # Todo-Informationen abrufen
+            task_info = todo_manager.task_info.get(task, {})
+            task_type = task_info.get("type", "N/A")
+            category = task_info.get("category", "N/A")
+            estimated_time = task_info.get("estimated_time", "N/A")
+            color = task_info.get("color", "#cccccc")
+            
+            # Geschätzte Zeit in Stunden:Minuten umwandeln, falls möglich
+            est_time_display = "N/A"
+            if estimated_time != "N/A":
+                try:
+                    est_hours = float(estimated_time)
+                    est_hours_int = int(est_hours)
+                    est_minutes = int((est_hours - est_hours_int) * 60)
+                    est_time_display = f"{est_hours_int}h {est_minutes}m"
+                except ValueError:
+                    est_time_display = estimated_time
+            
+            # Progress berechnen (actual/estimated in %)
+            progress = "N/A"
+            if estimated_time != "N/A" and estimated_time != "0":
+                try:
+                    est_hours = float(estimated_time)
+                    act_hours = hours
+                    if est_hours > 0:
+                        progress = f"{(act_hours / est_hours) * 100:.1f}%"
+                except ValueError:
+                    progress = "N/A"
+            
+            # Zeile zum Array hinzufügen
+            task_rows.append([
+                task, 
+                time_str, 
+                est_time_display, 
+                progress,
+                task_type, 
+                category,
+                color,  # Farbe hinzugefügt
+                seconds
+            ])
+        
+        # Tabelle ausgeben
+        print(tabulate(
+            task_rows, 
+            headers=["Aufgabe", "Tatsächliche Zeit", "Geschätzte Zeit", "Fortschritt", "Typ", "Kategorie", "Farbe", "Sekunden"], 
+            tablefmt="grid"
+        ))
+        
+        # Sortiere nach der aufgewendeten Zeit (absteigend)
+        sorted_subtasks = sorted(subtask_totals.items(), key=lambda x: x[1], reverse=True)
+        
+        print("\nGesamtzeit pro Aufgabe + Unteraufgabe mit Todo-Daten:")
+        print("==================================================")
+        subtask_rows = []
+        for task_subtask, seconds in sorted_subtasks:
+            # Zeit formatieren
+            hours = seconds / 3600
+            minutes = (seconds % 3600) / 60
+            time_str = f"{int(hours)}h {int(minutes)}m"
+            
+            # Task und Subtask trennen
+            task, *subtask_parts = task_subtask.split(":", 1)
+            subtask = subtask_parts[0] if subtask_parts else "-"
+            
+            # Todo-Informationen abrufen
+            task_info = todo_manager.task_info.get(task, {})
+            subtask_info = task_info.get("subtasks", {}).get(subtask, {})
+            
+            task_type = task_info.get("type", "N/A")
+            category = task_info.get("category", "N/A")
+            subtask_status = subtask_info.get("status", "N/A")
+            estimated_time = subtask_info.get("estimated_time", "N/A")
+            color = task_info.get("color", "#cccccc")
+            
+            # Geschätzte Zeit in Stunden:Minuten umwandeln, falls möglich
+            est_time_display = "N/A"
+            if estimated_time != "N/A":
+                try:
+                    est_hours = float(estimated_time)
+                    est_hours_int = int(est_hours)
+                    est_minutes = int((est_hours - est_hours_int) * 60)
+                    est_time_display = f"{est_hours_int}h {est_minutes}m"
+                except ValueError:
+                    est_time_display = estimated_time
+            
+            # Progress berechnen (actual/estimated in %)
+            progress = "N/A"
+            if estimated_time != "N/A" and estimated_time != "0":
+                try:
+                    est_hours = float(estimated_time)
+                    act_hours = hours
+                    if est_hours > 0:
+                        progress = f"{(act_hours / est_hours) * 100:.1f}%"
+                except ValueError:
+                    progress = "N/A"
+            
+            # Zeile zum Array hinzufügen
+            subtask_rows.append([
+                task, 
+                subtask, 
+                time_str, 
+                est_time_display,
+                progress,
+                subtask_status,
+                task_type, 
+                category,
+                color,  # Farbe hinzugefügt
+                seconds
+            ])
+        
+        # Tabelle ausgeben
+        print(tabulate(
+            subtask_rows, 
+            headers=[
+                "Aufgabe", "Unteraufgabe", "Tatsächliche Zeit", "Geschätzte Zeit", 
+                "Fortschritt", "Status", "Typ", "Kategorie", "Farbe", "Sekunden"
+            ], 
+            tablefmt="grid"
+        ))
+        print("\n" + "=" * 50 + "\n")
+    
+    @staticmethod
     def extract_start_times(data_dict):
         """Extracts the first start time from each dataset."""
         start_times = [' ', ' ', ' ', ' ', ' ']  
@@ -231,7 +418,6 @@ class DataProcessor:
                         break  # Schleife für diese Datei beenden, sobald eine Startzeit gefunden wurde
         
         return start_times
-
 
 # Datensammlung und -verarbeitung
 class DataManager:
@@ -274,6 +460,19 @@ class DataManager:
         
         # Nur ursprüngliche Rückgabewerte für Rückwärtskompatibilität zurückgeben
         return self.data_dict, self.total_actual_times, self.start_times
+    
+    def print_enhanced_statistics(self):
+        """Druckt erweiterte Statistiken mit Todo-Daten"""
+        # Todo-Manager initialisieren
+        todo_manager = TodoManager(self.base_dir)
+        
+        # Erweiterte Statistik ausgeben
+        DataProcessor.print_enhanced_task_statistics(
+            self.task_totals, 
+            self.subtask_totals, 
+            todo_manager
+        )
+
 # GUI Klasse - jetzt als QWidget statt QMainWindow für bessere Integration
 class BarChartApp(QWidget):
     def __init__(self, data_dict, total_actual_times, start_times):
@@ -459,6 +658,7 @@ class BarChartApp(QWidget):
         # Layout optimieren
         self.figure.tight_layout(pad=2.0)
         self.canvas.draw()
+
 # Hauptprogramm (nur ausführen, wenn die Datei direkt gestartet wird)
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -466,6 +666,9 @@ if __name__ == "__main__":
     # Daten-Manager initialisieren
     data_manager = DataManager()
     data_dict, total_actual_times, start_times = data_manager.load_all_data()
+    
+    # Erweiterte Statistik mit Todo-Daten ausgeben
+    data_manager.print_enhanced_statistics()
     
     # GUI starten
     window = BarChartApp(data_dict, total_actual_times, start_times)
