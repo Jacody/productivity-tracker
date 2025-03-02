@@ -121,12 +121,99 @@ class DataProcessor:
     
     @staticmethod
     def sum_actual_times(data_dict):
-        """Sums up all actual times for each data element and converts to an array of hours."""
+        """
+        Originale Funktion (umbenannt für Rückwärtskompatibilität)
+        Sums up all actual times for each data element and converts to an array of hours.
+        """
+        return DataProcessor.sum_actual_times_original(data_dict)
+    
+    @staticmethod
+    def sum_actual_times_original(data_dict):
+        """
+        Originale Funktion für Rückwärtskompatibilität
+        Sums up all actual times for each data element and converts to an array of hours.
+        """
         total_actual_times = []
         for index in sorted(data_dict.keys()):  # Sort keys to maintain order
             total_time = sum(int(row["Actual Time"]) for row in data_dict[index] if str(row["Actual Time"]).isdigit())
             total_actual_times.append(round(total_time / 3600, 2))  # Convert seconds to hours
         return total_actual_times
+    
+    @staticmethod
+    def sum_actual_times_extended(data_dict):
+        """
+        Erweiterte Funktion zur Berechnung von Task-Zeiten
+        Sums up all actual times for each data element and calculates task and subtask totals.
+        
+        Returns:
+        - total_actual_times: List of total hours per day
+        - task_totals: Dictionary with total seconds per task
+        - subtask_totals: Dictionary with total seconds per subtask combination
+        """
+        total_actual_times = []
+        task_totals = {}
+        subtask_totals = {}
+        
+        for index in sorted(data_dict.keys()):  # Sort keys to maintain order
+            # Summe der Zeiten für den Tag berechnen (wie bisher)
+            total_time = sum(int(row["Actual Time"]) for row in data_dict[index] if str(row["Actual Time"]).isdigit())
+            total_actual_times.append(round(total_time / 3600, 2))  # Convert seconds to hours
+            
+            # Tasks und Subtasks in diesem Datensatz analysieren
+            for row in data_dict[index]:
+                if (str(row["Actual Time"]).isdigit() and 
+                    "Task" in row and "Subtask" in row and 
+                    row["Start"] != "False"):
+                    
+                    actual_time = int(row["Actual Time"])
+                    task = row.get("Task", "").strip()
+                    subtask = row.get("Subtask", "").strip()
+                    
+                    # Subtask Key erstellen (Task + Subtask Kombination)
+                    task_subtask_key = f"{task}:{subtask}" if task and subtask else task or "(Keine Aufgabe)"
+                    
+                    # Task Zähler aktualisieren
+                    if task:
+                        task_totals[task] = task_totals.get(task, 0) + actual_time
+                    
+                    # Task + Subtask Kombination zählen
+                    subtask_totals[task_subtask_key] = subtask_totals.get(task_subtask_key, 0) + actual_time
+        
+        return total_actual_times, task_totals, subtask_totals
+    
+    @staticmethod
+    def print_task_statistics(task_totals, subtask_totals):
+        """Druckt eine formatierte Übersicht der Task- und Subtask-Zeiten"""
+        print("\n==== Aufgaben-Statistik ====\n")
+        
+        # Sortiere nach der aufgewendeten Zeit (absteigend)
+        sorted_tasks = sorted(task_totals.items(), key=lambda x: x[1], reverse=True)
+        
+        print("Gesamtzeit pro Aufgabe:")
+        print("======================")
+        task_rows = []
+        for task, seconds in sorted_tasks:
+            hours = seconds / 3600
+            minutes = (seconds % 3600) / 60
+            task_rows.append([task, f"{int(hours)}h {int(minutes)}m", seconds])
+        
+        print(tabulate(task_rows, headers=["Aufgabe", "Zeit", "Sekunden"], tablefmt="grid"))
+        
+        # Sortiere nach der aufgewendeten Zeit (absteigend)
+        sorted_subtasks = sorted(subtask_totals.items(), key=lambda x: x[1], reverse=True)
+        
+        print("\nGesamtzeit pro Aufgabe + Unteraufgabe:")
+        print("====================================")
+        subtask_rows = []
+        for task_subtask, seconds in sorted_subtasks:
+            hours = seconds / 3600
+            minutes = (seconds % 3600) / 60
+            task, *subtask_parts = task_subtask.split(":", 1)
+            subtask = subtask_parts[0] if subtask_parts else "-"
+            subtask_rows.append([task, subtask, f"{int(hours)}h {int(minutes)}m", seconds])
+        
+        print(tabulate(subtask_rows, headers=["Aufgabe", "Unteraufgabe", "Zeit", "Sekunden"], tablefmt="grid"))
+        print("\n" + "=" * 50 + "\n")
     
     @staticmethod
     def extract_start_times(data_dict):
@@ -154,6 +241,8 @@ class DataManager:
         self.week_dates = Config.get_current_week_dates()
         self.base_dir = Config.get_base_dir()
         self.data_dict = {}
+        self.task_totals = {}
+        self.subtask_totals = {}
         
     def load_all_data(self, verbose=True):
         """Lädt alle CSV-Dateien für die aktuelle Woche"""
@@ -171,16 +260,20 @@ class DataManager:
                 if verbose:
                     print(f"File does not exist: {file_path}")
         
-        # Calculate metrics
-        self.total_actual_times = DataProcessor.sum_actual_times(self.data_dict)
+        # Bisherige Berechnung für Rückwärtskompatibilität
+        self.total_actual_times = DataProcessor.sum_actual_times_original(self.data_dict)
         self.start_times = DataProcessor.extract_start_times(self.data_dict)
+        
+        # Neue Berechnung für Task-Statistiken
+        _, self.task_totals, self.subtask_totals = DataProcessor.sum_actual_times_extended(self.data_dict)
         
         if verbose:
             print("Total actual times per dataset:", self.total_actual_times)
+            # Ausgabe der Task-Statistiken
+            DataProcessor.print_task_statistics(self.task_totals, self.subtask_totals)
         
+        # Nur ursprüngliche Rückgabewerte für Rückwärtskompatibilität zurückgeben
         return self.data_dict, self.total_actual_times, self.start_times
-
-
 # GUI Klasse - jetzt als QWidget statt QMainWindow für bessere Integration
 class BarChartApp(QWidget):
     def __init__(self, data_dict, total_actual_times, start_times):
