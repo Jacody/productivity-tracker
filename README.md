@@ -1,2 +1,2 @@
 # productivity-tracker
-productivity-tracker with face recognition to ensure you slaying progress.
+productivity-tracker with face recognition to ensure slaying progress.
