@@ -8,5 +8,5 @@ Mode,Status,Work,Block,Task,Subtask,Timer,Time
 1,1,1,3,Productivity tracker,Save time,0:00:00,11:12:08
 0,1,1,3,Productivity tracker,Save time,0:18:00,11:30:08
 0,0,1,3,Productivity tracker,Save time,0:18:00,11:45:08
-1,1,1,3,Productivity tracker,Save time,0:18:00,12:15:00
-0,0,0,3,Productivity tracker,Save time,0:18:00,13:00:00
+1,1,1,3,Schall Isolierung, Planung,0:18:00,12:15:00
+0,0,0,3,Schall Isolierung, Planung,0:18:00,13:00:00

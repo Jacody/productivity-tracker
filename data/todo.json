@@ -6,6 +6,7 @@
             "category": "Hacken",
             "estimated_time": "30",
             "actual_time": "0",
+            "color": "#3498db",
             "subtasks": [
                 {
                     "subtask": "Save time",
@@ -14,57 +15,43 @@
                     "actual_time": "0"
                 },
                 {
-                    "subtask": "Thinking",
+                    "subtask": "Drag and Drop",
                     "status": "Pending",
-                    "estimated_time": "2",
+                    "estimated_time": "1",
                     "actual_time": "0"
                 },
                 {
                     "subtask": "Build CSV-Reader",
                     "status": "Pending",
-                    "estimated_time": "N/A",
+                    "estimated_time": "20",
                     "actual_time": "0"
                 },
                 {
                     "subtask": "Display different Categories",
                     "status": "In Progress",
-                    "estimated_time": "N/A",
+                    "estimated_time": "4",
                     "actual_time": "0"
                 },
                 {
-                    "subtask": "Drag and Drop",
+                    "subtask": "Thinking",
                     "status": "Pending",
-                    "estimated_time": "1",
+                    "estimated_time": "2",
                     "actual_time": "0"
                 }
             ]
         },
         {
-            "task": "AI Research",
+            "task": "Fotos sortieren",
             "type": "Digital",
-            "category": "Hacken",
-            "estimated_time": "30",
+            "category": "Hustle",
+            "estimated_time": "2",
             "actual_time": "0",
+            "color": "#e91e63",
             "subtasks": [
                 {
-                    "subtask": "R1 Setup",
+                    "subtask": "Externe auf Icloud",
                     "status": "Pending",
-                    "estimated_time": "3",
-                    "actual_time": "1.5"
-                }
-            ]
-        },
-        {
-            "task": "10 Finger schreiben",
-            "type": "Digital",
-            "category": "Hacken",
-            "estimated_time": "20",
-            "actual_time": "0",
-            "subtasks": [
-                {
-                    "subtask": "Thinking",
-                    "status": "Pending",
-                    "estimated_time": "1",
+                    "estimated_time": "2",
                     "actual_time": "0"
                 }
             ]
@@ -75,10 +62,11 @@
             "category": "Hustle",
             "estimated_time": "10",
             "actual_time": "0",
+            "color": "#3f1c4f",
             "subtasks": [
                 {
                     "subtask": "Achslager",
-                    "status": "Pending",
+                    "status": "Completed",
                     "estimated_time": "2",
                     "actual_time": "0"
                 },
@@ -91,12 +79,70 @@
             ]
         },
         {
-            "task": "moin",
+            "task": "Schall Isolierung",
             "type": "Digital",
             "category": "Hacken",
-            "estimated_time": "N/A",
+            "estimated_time": "10",
             "actual_time": "0",
-            "subtasks": []
+            "color": "#e67e22",
+            "subtasks": [
+                {
+                    "subtask": "Hellweg",
+                    "status": "Pending",
+                    "estimated_time": "1.5",
+                    "actual_time": "0"
+                },
+                {
+                    "subtask": "Bauen",
+                    "status": "Pending",
+                    "estimated_time": "3",
+                    "actual_time": "0"
+                },
+                {
+                    "subtask": "Planung",
+                    "status": "Pending",
+                    "estimated_time": "2",
+                    "actual_time": "0"
+                }
+            ]
+        },
+        {
+            "task": "Kickbase AI",
+            "type": "Digital",
+            "category": "Hacken",
+            "estimated_time": "40",
+            "actual_time": "0",
+            "color": "#ff6b81",
+            "subtasks": [
+                {
+                    "subtask": "Scrum plan",
+                    "status": "Pending",
+                    "estimated_time": "3",
+                    "actual_time": "0"
+                },
+                {
+                    "subtask": "Brainstorm",
+                    "status": "Completed",
+                    "estimated_time": "2",
+                    "actual_time": "0"
+                }
+            ]
+        },
+        {
+            "task": "10 Finger schreiben",
+            "type": "Digital",
+            "category": "Hacken",
+            "estimated_time": "20",
+            "actual_time": "0",
+            "color": "#9b59b6",
+            "subtasks": [
+                {
+                    "subtask": "Thinking",
+                    "status": "Pending",
+                    "estimated_time": "1",
+                    "actual_time": "0"
+                }
+            ]
         }
     ]
 }

@@ -1,9 +1,4 @@
 Mode,Status,Work,Block,Task,Subtask,Timer,Time
-1,0,1,1,2,3,0:00:00,08:29:15
-1,1,1,1,2,3,0:00:00,08:29:17
-1,1,0,2,2,3,0:00:00,08:29:27
-1,1,1,2,2,3,0:00:00,08:29:32
-1,1,1,2,2,3,0:00:01,08:29:34
 1,0,1,2,Productivity tracker,Save time,0:00:00,09:37:11
 1,1,1,2,Productivity tracker,Save time,0:00:00,09:37:12
 1,1,0,3,Productivity tracker,Save time,0:00:00,09:37:23

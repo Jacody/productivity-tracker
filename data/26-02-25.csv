@@ -88,47 +88,47 @@ Mode,Status,Work,Block,Task,Subtask,Timer,Time
 0,0,1,5,Productivity tracker,Build CSV-Reader,0:00:00,13:09:50
 0,1,1,5,Productivity tracker,Build CSV-Reader,0:00:00,13:45:20
 0,0,1,5,Productivity tracker,Build CSV-Reader,0:00:00,13:45:22
-0,1,1,5,Productivity tracker,Build CSV-Reader,0:00:00,14:14:49
-1,1,1,5,Productivity tracker,Build CSV-Reader,0:00:00,14:14:59
-1,0,1,5,Productivity tracker,Build CSV-Reader,0:00:37,14:15:37
-1,1,1,5,Productivity tracker,Build CSV-Reader,0:00:37,14:15:39
-1,0,1,5,Productivity tracker,Build CSV-Reader,0:03:21,14:18:23
-1,1,1,5,Productivity tracker,Build CSV-Reader,0:03:21,14:18:23
-0,1,1,5,Productivity tracker,Build CSV-Reader,0:15:20,14:30:22
-1,1,1,5,Productivity tracker,Build CSV-Reader,0:15:20,14:30:22
-0,1,1,5,Productivity tracker,Build CSV-Reader,0:15:20,14:30:23
-1,1,1,5,Productivity tracker,Build CSV-Reader,0:15:20,14:30:25
-0,1,1,5,Productivity tracker,Build CSV-Reader,0:15:42,14:30:46
-1,1,1,5,Productivity tracker,Build CSV-Reader,0:15:42,14:30:47
-0,1,1,5,Productivity tracker,Build CSV-Reader,0:15:43,14:30:47
-1,1,1,5,Productivity tracker,Build CSV-Reader,0:15:43,14:30:50
-0,1,1,5,Productivity tracker,Thinking,0:16:05,14:31:12
-1,1,1,5,Productivity tracker,Thinking,0:16:05,14:31:13
-0,1,1,5,Productivity tracker,Thinking,0:16:06,14:31:14
-1,1,1,5,Productivity tracker,Thinking,0:16:06,14:31:18
-0,1,1,5,Productivity tracker,Build CSV-Reader,0:17:32,14:32:45
-1,1,1,5,Productivity tracker,Build CSV-Reader,0:17:32,14:32:45
-1,0,1,5,Productivity tracker,Build CSV-Reader,0:28:08,14:43:21
-1,1,1,5,Productivity tracker,Build CSV-Reader,0:28:08,14:43:21
-1,0,1,5,Productivity tracker,Build CSV-Reader,0:36:24,14:51:37
-1,1,1,5,Productivity tracker,Build CSV-Reader,0:36:24,14:53:19
-1,1,0,6,Productivity tracker,Build CSV-Reader,0:00:00,15:01:56
-1,0,0,6,Productivity tracker,Build CSV-Reader,0:00:00,15:06:12
-1,0,1,6,Productivity tracker,Build CSV-Reader,0:00:00,15:16:56
-1,1,1,6,Productivity tracker,Build CSV-Reader,0:00:00,15:25:00
-0,1,1,6,Productivity tracker,Build CSV-Reader,0:00:31,15:25:32
-0,0,1,6,Productivity tracker,Build CSV-Reader,0:00:31,15:25:37
-0,1,1,6,Productivity tracker,Build CSV-Reader,0:00:31,15:27:11
-1,1,1,6,Productivity tracker,Build CSV-Reader,0:00:31,15:27:14
-1,0,1,6,Productivity tracker,Build CSV-Reader,0:15:06,15:41:49
-1,1,1,6,Productivity tracker,Build CSV-Reader,0:15:06,15:42:02
-1,0,1,6,Productivity tracker,Build CSV-Reader,0:15:46,15:42:42
-1,1,1,6,Productivity tracker,Build CSV-Reader,0:15:46,15:42:42
-1,0,1,6,Productivity tracker,Build CSV-Reader,0:17:02,15:43:58
-1,1,1,6,Productivity tracker,Build CSV-Reader,0:17:02,15:44:59
-0,1,1,6,Productivity tracker,Build CSV-Reader,0:26:20,15:54:17
-1,1,1,6,Productivity tracker,Build CSV-Reader,0:26:20,15:54:17
-0,1,1,6,Productivity tracker,Build CSV-Reader,0:26:20,15:54:17
-0,0,1,6,Productivity tracker,Build CSV-Reader,0:26:20,15:54:19
-0,0,0,6,Productivity tracker,Build CSV-Reader,0:26:20,16:10:41
+0,1,1,5,Fotos sortieren,Externe auf Icloud,0:00:00,14:14:49
+1,1,1,5,Fotos sortieren,Externe auf Icloud,0:00:00,14:14:59
+1,0,1,5,Fotos sortieren,Externe auf Icloud,0:00:37,14:15:37
+1,1,1,5,Fotos sortieren,Externe auf Icloud,0:00:37,14:15:39
+1,0,1,5,Fotos sortieren,Externe auf Icloud,0:03:21,14:18:23
+1,1,1,5,Fotos sortieren,Externe auf Icloud,0:03:21,14:18:23
+0,1,1,5,Fotos sortieren,Externe auf Icloud,0:15:20,14:30:22
+1,1,1,5,Fotos sortieren,Externe auf Icloud,0:15:20,14:30:22
+0,1,1,5,Fotos sortieren,Externe auf Icloud,0:15:20,14:30:23
+1,1,1,5,Fotos sortieren,Externe auf Icloud,0:15:20,14:30:25
+0,1,1,5,Fotos sortieren,Externe auf Icloud,0:15:42,14:30:46
+1,1,1,5,Fotos sortieren,Externe auf Icloud,0:15:42,14:30:47
+0,1,1,5,Fotos sortieren,Externe auf Icloud,0:15:43,14:30:47
+1,1,1,5,Fotos sortieren,Externe auf Icloud,0:15:43,14:30:50
+0,1,1,5,Fotos sortieren,Externe auf Icloud,0:16:05,14:31:12
+1,1,1,5,Fotos sortieren,Externe auf Icloud,0:16:05,14:31:13
+0,1,1,5,Fotos sortieren,Externe auf Icloud,,0:16:06,14:31:14
+1,1,1,5,Fotos sortieren,Externe auf Icloud,0:16:06,14:31:18
+0,1,1,5,Fotos sortieren,Externe auf Icloud,0:17:32,14:32:45
+1,1,1,5,Fotos sortieren,Externe auf Icloud,0:17:32,14:32:45
+1,0,1,5,Fotos sortieren,Externe auf Icloud,0:28:08,14:43:21
+1,1,1,5,Fotos sortieren,Externe auf Icloud,0:28:08,14:43:21
+1,0,1,5,Fotos sortieren,Externe auf Icloud,0:36:24,14:51:37
+1,1,1,5,Fotos sortieren,Externe auf Icloud,0:36:24,14:53:19
+1,1,0,6,Fotos sortieren,Externe auf Icloud,0:00:00,15:01:56
+1,0,0,6,Fotos sortieren,Externe auf Icloud,0:00:00,15:06:12
+1,0,1,6,Fotos sortieren,Externe auf Icloud,0:00:00,15:16:56
+1,1,1,6,Fotos sortieren,Externe auf Icloud,0:00:00,15:25:00
+0,1,1,6,Fotos sortieren,Externe auf Icloud,0:00:31,15:25:32
+0,0,1,6,Fotos sortieren,Externe auf Icloud,0:00:31,15:25:37
+0,1,1,6,Fotos sortieren,Externe auf Icloud,0:00:31,15:27:11
+1,1,1,6,Fotos sortieren,Externe auf Icloud,0:00:31,15:27:14
+1,0,1,6,Fotos sortieren,Externe auf Icloud,0:15:06,15:41:49
+1,1,1,6,Fotos sortieren,Externe auf Icloud,0:15:06,15:42:02
+1,0,1,6,Fotos sortieren,Externe auf Icloud,0:15:46,15:42:42
+1,1,1,6,Fotos sortieren,Externe auf Icloud,0:15:46,15:42:42
+1,0,1,6,Fotos sortieren,Externe auf Icloud,0:17:02,15:43:58
+1,1,1,6,Fotos sortieren,Externe auf Icloud,0:17:02,15:44:59
+0,1,1,6,Fotos sortieren,Externe auf Icloud,0:26:20,15:54:17
+1,1,1,6,Fotos sortieren,Externe auf Icloud,0:26:20,15:54:17
+0,1,1,6,Fotos sortieren,Externe auf Icloud,0:26:20,15:54:17
+0,0,1,6,Fotos sortieren,Externe auf Icloud,0:26:20,15:54:19
+0,0,0,6,Fotos sortieren,Externe auf Icloud,0:26:20,16:10:41
 
