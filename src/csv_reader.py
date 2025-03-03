@@ -81,7 +81,7 @@ class CsvVisualizerCombined(QWidget):
         self.splitter.addWidget(self.weekly_viz)
         
         # Set initial sizes (60% for bar chart, 40% for weekly visualization)
-        self.splitter.setSizes([600, 400])
+        self.splitter.setSizes([700, 300])
         
         # Add splitter to main layout
         self.layout.addWidget(self.splitter)

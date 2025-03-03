@@ -20,8 +20,8 @@ class WeeklyCircularProgress(CircularProgressWidget):
         self.work_color = color  # Override the default color
         self.break_color = color  # Use same color for entire circle
         
-        # Set size
-        self.setMinimumSize(180, 180)  # Smaller than original
+        # Set size - made smaller
+        self.setMinimumSize(150, 150)  # Smaller than before
         
         # Override values for progress tracking
         self.total_time_max = 100  # Use percentage (0-100)
@@ -33,7 +33,7 @@ class WeeklyCircularProgress(CircularProgressWidget):
         self.time_text = "0%"
         
         # Add hours text
-        self.hours_text = "0h / 0h"
+        self.hours_text = "0 / 0"
     
     def set_progress(self, current, maximum):
         """Set progress as current/maximum values"""
@@ -46,8 +46,9 @@ class WeeklyCircularProgress(CircularProgressWidget):
         # Override time text to show percentage
         self.time_text = f"{percentage}%"
         
-        # Set hours text
-        self.hours_text = f"{int(current)}h {int((current % 1) * 60)}m / {int(maximum)}h"
+        # We'll no longer use the built-in hours text
+        # Instead we'll use external labels in the main UI
+        self.hours_text = ""
         
         self.update()
     
@@ -107,17 +108,9 @@ class WeeklyCircularProgress(CircularProgressWidget):
         
         # Draw our custom elements
         
-        # Draw title at the top - MOVED HIGHER
-        painter.setPen(Qt.black)
-        font = QFont("Arial", 12, QFont.Normal)
-        painter.setFont(font)
-        painter.drawText(QRectF(0, 0, self.width(), 10), Qt.AlignCenter, self.title)
+        # Title not displayed as requested
         
-        # Draw hours text below the percentage
-        painter.setPen(Qt.black)
-        font = QFont("Arial", 13)
-        painter.setFont(font)
-        painter.drawText(QRectF(0, self.height()/2 + 70, self.width(), 30), Qt.AlignCenter, self.hours_text)
+        # No longer drawing hours text here - will use standalone labels instead
 
 
 class WeeklyVisualizationWidget(QWidget):
@@ -149,10 +142,10 @@ class WeeklyVisualizationWidget(QWidget):
         main_layout.setSpacing(20)
         
         # Add title
-        title_label = QLabel("Weekly Progress")
+        title_label = QLabel("Weekly Goals")
         title_label.setAlignment(Qt.AlignCenter)
         title_font = QFont()
-        title_font.setPointSize(16)
+        title_font.setPointSize(15)
         title_font.setBold(True)
         title_label.setFont(title_font)
         main_layout.addWidget(title_label)
@@ -161,24 +154,58 @@ class WeeklyVisualizationWidget(QWidget):
         hacken_hours = self.hacken_hustle_data["hacken"]["total"] / 3600
         hustle_hours = self.hacken_hustle_data["hustle"]["total"] / 3600
         
-        # Create horizontal layout for circular progress widgets
-        circular_layout = QHBoxLayout()
+        # Create vertical layout for circular progress widgets (changed from horizontal to vertical)
+        circular_layout = QVBoxLayout()
+        circular_layout.setSpacing(30)  # Add spacing between widgets
         
-        # Hacken progress widget
+        # Create a container widget for Hacken progress and its label
+        hacken_container = QWidget()
+        hacken_layout = QVBoxLayout(hacken_container)
+        hacken_layout.setSpacing(5)  # Reduced spacing inside container
+        hacken_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
+        
+        # Hacken progress widget first
         self.hacken_progress = WeeklyCircularProgress(
-            title="HACKEN", 
+            title="Hacken", 
             color=QColor(74, 134, 232)  # Blue
         )
         self.hacken_progress.set_progress(hacken_hours, self.hacken_goal_hours)
-        circular_layout.addWidget(self.hacken_progress)
+        hacken_layout.addWidget(self.hacken_progress, 0, Qt.AlignCenter)
         
-        # Hustle progress widget
+        # Add label for Hacken hours text below the progress widget
+        hacken_label = QLabel(f"Hacken: {hacken_hours:.1f}h / {self.hacken_goal_hours:.0f}h")
+        hacken_label.setAlignment(Qt.AlignCenter)
+        hacken_label.setFont(QFont("Arial", 15))
+        hacken_layout.addWidget(hacken_label, 0, Qt.AlignCenter)
+        
+        # Add the container to the main layout
+        circular_layout.addWidget(hacken_container, 0, Qt.AlignCenter)
+        
+        # Add spacing between the two widgets
+        circular_layout.addSpacing(20)  # Additional spacing
+        
+        # Create a container widget for Hustle progress and its label
+        hustle_container = QWidget()
+        hustle_layout = QVBoxLayout(hustle_container)
+        hustle_layout.setSpacing(5)  # Reduced spacing inside container
+        hustle_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
+        
+        # Hustle progress widget first
         self.hustle_progress = WeeklyCircularProgress(
-            title="HUSTLE", 
+            title="Hustle", 
             color=QColor(230, 124, 115)  # Red
         )
         self.hustle_progress.set_progress(hustle_hours, self.hustle_goal_hours)
-        circular_layout.addWidget(self.hustle_progress)
+        hustle_layout.addWidget(self.hustle_progress, 0, Qt.AlignCenter)
+        
+        # Add label for Hustle hours text below the progress widget
+        hustle_label = QLabel(f"Hustle: {hustle_hours:.1f}h / {self.hustle_goal_hours:.0f}h")
+        hustle_label.setAlignment(Qt.AlignCenter)
+        hustle_label.setFont(QFont("Arial", 15))
+        hustle_layout.addWidget(hustle_label, 0, Qt.AlignCenter)
+        
+        # Add the container to the main layout
+        circular_layout.addWidget(hustle_container, 0, Qt.AlignCenter)
         
         # Add circular progress widgets to main layout
         main_layout.addLayout(circular_layout)
@@ -187,14 +214,14 @@ class WeeklyVisualizationWidget(QWidget):
         main_layout.addSpacing(20)
         
         # Add remaining/excess info labels
-        self.add_info_section(main_layout, "Hacken", hacken_hours, self.hacken_goal_hours)
-        self.add_info_section(main_layout, "Hustle", hustle_hours, self.hustle_goal_hours)
+        #self.add_info_section(main_layout, "Hacken", hacken_hours, self.hacken_goal_hours)
+        #self.add_info_section(main_layout, "Hustle", hustle_hours, self.hustle_goal_hours)
         
         # Add spacer at the bottom
         main_layout.addStretch()
         
         self.setLayout(main_layout)
-    
+    '''
     def add_info_section(self, layout, category, actual_hours, goal_hours):
         """Add remaining/excess info section"""
         if actual_hours > goal_hours:
@@ -210,7 +237,7 @@ class WeeklyVisualizationWidget(QWidget):
         info_label.setStyleSheet(f"color: {color};")
         info_label.setAlignment(Qt.AlignCenter)
         info_label.setFont(QFont("Arial", 15))
-        layout.addWidget(info_label)
+        layout.addWidget(info_label)'''
 
 
 if __name__ == "__main__":
@@ -219,7 +246,7 @@ if __name__ == "__main__":
     
     # Create widget (no need to pass data, it loads automatically)
     widget = WeeklyVisualizationWidget()
-    widget.setWindowTitle("Weekly Progress")
+    widget.setWindowTitle("Weekly Goals")
     widget.resize(500, 400)
     widget.show()
     

@@ -71,17 +71,13 @@ class BarChartApp(QWidget):
         # Colors for a modern color scheme
         default_color = '#3498db'  # Standard blue for tasks without color
         highlight_color = '#2ecc71'  # Green for achieved hour goals
-        background_color = '#f8f9fa'  # Light background
+        background_color = '#ececec'  # Changed to requested background color
         grid_color = '#A0A0A0'  # Light gray grid lines
         text_color = '#2c3e50'  # Dark blue/gray for text
-        weekend_color = '#f5f5f5'  # Lighter background for weekend days
         
         # Set background
         self.figure.patch.set_facecolor(background_color)
         self.ax.set_facecolor(background_color)
-        
-        # Highlight weekend area with slightly different background
-        self.ax.axvspan(4.5, 6.5, color=weekend_color, alpha=0.5, zorder=0)
         
         # Target work hours (e.g. 8 hours per day for weekdays, 0 for weekends)
         target_hours = [8.0, 8.0, 8.0, 8.0, 8.0, 0.0, 0.0]  # Mon-Fri: 8h, Sat-Sun: 0h
@@ -133,7 +129,7 @@ class BarChartApp(QWidget):
                     self.ax.text(
                         x_pos[day_idx-1], 
                         bar_top + 0.8, 
-                        f"{total_time:.1f}h",
+                        f"{total_time:.2f}h",
                         ha='center', 
                         va='center',
                         fontsize=10,
@@ -143,7 +139,7 @@ class BarChartApp(QWidget):
                     )
 
         # Highlight horizontal lines for work hours (9-17)
-        self.ax.axhspan(9, 17, color='#f1f8ff', alpha=0.5, zorder=1)
+        self.ax.axhspan(9, 17, color='#ececec', alpha=0.5, zorder=1)  # Changed to match background
         
         # Chart formatting
         self.ax.set_ylim(7, 20)
