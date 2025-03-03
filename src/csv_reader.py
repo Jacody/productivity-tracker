@@ -30,6 +30,12 @@ class Config:
         # Calculate Monday of the current week
         monday = today - timedelta(days=weekday - 1)
         
+        '''for testing'''
+        fixed_date = datetime(2025, 2, 28)  # Festes Datum (Freitag)
+        
+        # Berechne Montag der gleichen Woche
+        monday = fixed_date - timedelta(days=4)
+        
         # Generate dates for Monday to Friday in "DD-MM-YY" format
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
         week_dates = {day: (monday + timedelta(days=i)).strftime("%d-%m-%y") for i, day in enumerate(days)}
@@ -230,6 +236,97 @@ class DataProcessor:
         
         return total_actual_times, task_totals, subtask_totals
     
+    def sum_hacken_hustle_times(task_totals, todo_manager):
+        """
+        Summe der Zeiten für Hacken und Hustle berechnen
+        
+        Returns:
+        - hacken_time: Gesamtzeit in Sekunden für 'Hacken' Kategorien
+        - hustle_time: Gesamtzeit in Sekunden für 'Hustle' Kategorien
+        - uncategorized_time: Gesamtzeit in Sekunden für nicht kategorisierte Tasks
+        """
+        hacken_time = 0
+        hustle_time = 0
+        uncategorized_time = 0
+        
+        # Task-Listen für detaillierte Ausgabe
+        hacken_tasks = {}
+        hustle_tasks = {}
+        uncategorized_tasks = {}
+        
+        # Durchlaufe alle Tasks und summiere nach Kategorie
+        for task_name, seconds in task_totals.items():
+            task_info = todo_manager.task_info.get(task_name, {})
+            category = task_info.get("category", "").lower()  # Kategorie in Kleinbuchstaben für den Vergleich
+            
+            if "hacken" in category:
+                hacken_time += seconds
+                hacken_tasks[task_name] = seconds
+            elif "hustle" in category:
+                hustle_time += seconds
+                hustle_tasks[task_name] = seconds
+            else:
+                uncategorized_time += seconds
+                uncategorized_tasks[task_name] = seconds
+        
+        return {
+            "hacken": {"total": hacken_time, "tasks": hacken_tasks},
+            "hustle": {"total": hustle_time, "tasks": hustle_tasks},
+            "uncategorized": {"total": uncategorized_time, "tasks": uncategorized_tasks}
+        }
+    
+    @staticmethod
+    def print_hacken_hustle_summary(hacken_hustle_data):
+        """Druckt eine Zusammenfassung der Hacken/Hustle-Zeiten"""
+        print("\n==== Hacken vs. Hustle Zusammenfassung ====\n")
+        
+        # Gesamtzeiten formatieren
+        hacken_hours = hacken_hustle_data["hacken"]["total"] / 3600
+        hustle_hours = hacken_hustle_data["hustle"]["total"] / 3600
+        uncategorized_hours = hacken_hustle_data["uncategorized"]["total"] / 3600
+        total_hours = hacken_hours + hustle_hours + uncategorized_hours
+        
+        # Anteile berechnen (wenn Gesamtzeit > 0)
+        hacken_percentage = (hacken_hours / total_hours * 100) if total_hours > 0 else 0
+        hustle_percentage = (hustle_hours / total_hours * 100) if total_hours > 0 else 0
+        uncategorized_percentage = (uncategorized_hours / total_hours * 100) if total_hours > 0 else 0
+        
+        # Tabelle für die Zusammenfassung
+        summary_table = [
+            ["Hacken", f"{int(hacken_hours)}h {int((hacken_hours % 1) * 60)}m", f"{hacken_percentage:.1f}%"],
+            ["Hustle", f"{int(hustle_hours)}h {int((hustle_hours % 1) * 60)}m", f"{hustle_percentage:.1f}%"],
+            ["Nicht kategorisiert", f"{int(uncategorized_hours)}h {int((uncategorized_hours % 1) * 60)}m", f"{uncategorized_percentage:.1f}%"],
+            ["Gesamt", f"{int(total_hours)}h {int((total_hours % 1) * 60)}m", "100.0%"]
+        ]
+        
+        print(tabulate(summary_table, headers=["Kategorie", "Zeit", "Anteil"], tablefmt="grid"))
+        
+        # Details zu den einzelnen Kategorien
+        for category, data in [
+            ("Hacken-Tasks", hacken_hustle_data["hacken"]["tasks"]), 
+            ("Hustle-Tasks", hacken_hustle_data["hustle"]["tasks"]), 
+            ("Nicht kategorisierte Tasks", hacken_hustle_data["uncategorized"]["tasks"])
+        ]:
+            if data:  # Nur anzeigen, wenn Daten vorhanden
+                print(f"\n{category}:")
+                print("-" * 40)
+                
+                # Tasks nach Zeit sortieren (absteigend)
+                sorted_tasks = sorted(data.items(), key=lambda x: x[1], reverse=True)
+                
+                tasks_table = []
+                for task, seconds in sorted_tasks:
+                    hours = seconds / 3600
+                    tasks_table.append([
+                        task, 
+                        f"{int(hours)}h {int((hours % 1) * 60)}m",
+                        f"{(seconds / hacken_hustle_data[category.split('-')[0].lower()]['total'] * 100):.1f}%" if hacken_hustle_data[category.split('-')[0].lower()]['total'] > 0 else "0.0%"
+                    ])
+                
+                print(tabulate(tasks_table, headers=["Task", "Zeit", "Anteil an Kategorie"], tablefmt="grid"))
+        
+        print("\n" + "=" * 50 + "\n")    
+    
     @staticmethod
     def print_task_statistics(task_totals, subtask_totals):
         """Druckt eine formatierte Übersicht der Task- und Subtask-Zeiten"""
@@ -429,6 +526,7 @@ class DataManager:
         self.data_dict = {}
         self.task_totals = {}
         self.subtask_totals = {}
+        self.hacken_hustle_data = {}
         
     def load_all_data(self, verbose=True):
         """Lädt alle CSV-Dateien für die aktuelle Woche"""
@@ -453,10 +551,18 @@ class DataManager:
         # Neue Berechnung für Task-Statistiken
         _, self.task_totals, self.subtask_totals = DataProcessor.sum_actual_times_extended(self.data_dict)
         
+        # Todo-Manager für Kategorien initialisieren
+        todo_manager = TodoManager(self.base_dir)
+        
+        # Hacken vs. Hustle Daten berechnen
+        self.hacken_hustle_data = DataProcessor.sum_hacken_hustle_times(self.task_totals, todo_manager)
+        
         if verbose:
             print("Total actual times per dataset:", self.total_actual_times)
             # Ausgabe der Task-Statistiken
             DataProcessor.print_task_statistics(self.task_totals, self.subtask_totals)
+            # Ausgabe der Hacken/Hustle-Statistik
+            DataProcessor.print_hacken_hustle_summary(self.hacken_hustle_data)
         
         # Nur ursprüngliche Rückgabewerte für Rückwärtskompatibilität zurückgeben
         return self.data_dict, self.total_actual_times, self.start_times
@@ -472,7 +578,9 @@ class DataManager:
             self.subtask_totals, 
             todo_manager
         )
-
+        
+        # Hacken/Hustle-Statistik ausgeben
+        DataProcessor.print_hacken_hustle_summary(self.hacken_hustle_data)
 # GUI Klasse - jetzt als QWidget statt QMainWindow für bessere Integration
 class BarChartApp(QWidget):
     def __init__(self, data_dict, total_actual_times, start_times):
@@ -481,12 +589,13 @@ class BarChartApp(QWidget):
         self.start_times = start_times
         self.total_actual_times = total_actual_times
         
+        # Todo-Manager für Farbzuordnung initialisieren
+        self.base_dir = Config.get_base_dir()
+        self.todo_manager = TodoManager(self.base_dir)
+        
         self.setup_ui()
         self.setup_timer()
         self.draw_chart()
-        
-        # Status-Label für letzte Aktualisierung
-        #self.last_update_time = datetime.now()
 
     def setup_ui(self):
         """Initialisiert die UI-Komponenten"""
@@ -515,23 +624,23 @@ class BarChartApp(QWidget):
         data_manager = DataManager()
         self.data_dict, self.total_actual_times, self.start_times = data_manager.load_all_data(verbose=False)
         
+        # Todo-Manager aktualisieren
+        self.todo_manager = TodoManager(self.base_dir)
+        
         # Chart neu zeichnen
         self.draw_chart()
-        
-        # Update time
-        #self.last_update_time = datetime.now()
         
         print("Aktualisierung abgeschlossen.")
 
     def draw_chart(self):
-        """Zeichnet ein modernes, ansprechenderes Balkendiagramm"""
+        """Zeichnet ein modernes, ansprechenderes Balkendiagramm mit task-spezifischen Farben"""
         self.ax.clear()
         categories = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"]
         x_pos = np.arange(len(categories))
         bar_width = 0.6  # Breitere Balken für ein moderneres Aussehen
         
         # Farben für ein modernes Farbschema
-        main_color = '#3498db'  # Blau
+        default_color = '#3498db'  # Standard-Blau für Tasks ohne Farbe
         highlight_color = '#2ecc71'  # Grün für erreichte Stundenziele
         background_color = '#f8f9fa'  # Heller Hintergrund
         grid_color = '#A0A0A0'  # Hellgraue Rasterlinien
@@ -551,23 +660,33 @@ class BarChartApp(QWidget):
                 last_valid_bar = None
                 daily_total = 0.0 if day_idx-1 >= len(self.total_actual_times) else self.total_actual_times[day_idx-1]
                 
-                # Farbe basierend auf Zielerfüllung bestimmen
-                bar_color = highlight_color if daily_total >= target_hours else main_color
-                
                 # Alle Arbeitsintervalle des Tages verarbeiten
                 for i, row in enumerate(day_data[:-1]):  # Letzte Zeile ignorieren
                     if row["Start"] != "False" and row["Actual Time"] > 0:
                         start = Config.time_to_decimal(row["Start"])
                         duration = row["Actual Time"] / 3600
                         
-                        # Balken mit abgerundeten Ecken (keine direkte Unterstützung in matplotlib,
-                        # aber mit Alpha-Transparenz und Schatten kann ein moderner Look erzeugt werden)
+                        # Farbe aus todo.json ermitteln, falls Task definiert ist
+                        task_color = default_color
+                        
+                        # Prüfen, ob Task-Information in der Zeile vorhanden ist
+                        if "Task" in row and row["Task"].strip():
+                            task_name = row["Task"].strip()
+                            # Farbe aus dem Todo-Manager abrufen
+                            task_info = self.todo_manager.task_info.get(task_name, {})
+                            if "color" in task_info:
+                                task_color = task_info["color"]
+                        
+                        # Für Tasks, die ihr Stundenziel erreicht haben, können wir optional highlight_color verwenden
+                        # oder die Task-Farbe beibehalten
+                        
+                        # Balken mit task-spezifischer Farbe zeichnen
                         bar = self.ax.bar(
                             x_pos[day_idx-1], 
                             duration,
                             bottom=start,
                             width=bar_width,
-                            color=bar_color,
+                            color=task_color,
                             alpha=0.85,
                             edgecolor='none',
                             zorder=3
@@ -580,7 +699,6 @@ class BarChartApp(QWidget):
                     total_time = self.total_actual_times[day_idx-1]
                     bar_top = last_valid_bar[0].get_height() + last_valid_bar[0].get_y()
                     
-                    # Hintergrundblase für die Stundenanzahl
                     # Stundenanzahl als einfache schwarze Zahl
                     self.ax.text(
                         x_pos[day_idx-1], 
@@ -621,16 +739,6 @@ class BarChartApp(QWidget):
         week_goal = target_hours * 5  # 5 Arbeitstage
         percentage = (week_total / week_goal) * 100 if week_goal > 0 else 0
         
-        """# Wochensumme als Titel
-        status_color = highlight_color if percentage >= 100 else (main_color if percentage >= 85 else '#e74c3c')
-        self.ax.set_title(
-            f"Weekly Tracking: {week_total:.1f}h von {week_goal}h ({percentage:.0f}%)", 
-            fontsize=12, 
-            fontweight='bold',
-            color=status_color,
-            pad=15
-        )"""
-        
         # Achsenlinien entfernen für ein cleaneres Aussehen
         self.ax.spines['top'].set_visible(False)
         self.ax.spines['right'].set_visible(False)
@@ -643,18 +751,6 @@ class BarChartApp(QWidget):
             self.ax.get_xticklabels()[today].set_color(highlight_color)
             self.ax.get_xticklabels()[today].set_fontweight('extra bold')
         
-        """# Aktualisierungszeitstempel dezent anzeigen
-        update_time = self.last_update_time.strftime("%H:%M:%S")
-        self.figure.text(
-            0.99, 0.01, 
-            f"Aktualisiert: {update_time}", 
-            ha='right', 
-            va='bottom',
-            fontsize=7,
-            color='#aab8c2',
-            style='italic'
-        )
-        """
         # Layout optimieren
         self.figure.tight_layout(pad=2.0)
         self.canvas.draw()
