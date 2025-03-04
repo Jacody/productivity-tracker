@@ -24,7 +24,7 @@ class CombinedApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Productivity-Tracker")
-        self.setGeometry(100, 100, 1000, 1100)  # Etwas höher und breiter für mehr Platz
+        self.setGeometry(100, 100, 1100, 700)  # Etwas höher und breiter für mehr Platz
 
         # Zentrales Widget mit vertikalem Layout
         central_widget = QWidget()

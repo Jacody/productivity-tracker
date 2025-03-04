@@ -23,10 +23,10 @@ class Config:
         monday = today - timedelta(days=weekday - 1)
         
         '''for testing'''
-        fixed_date = datetime(2025, 2, 28)  # Fixed date (Friday)
+        #fixed_date = datetime(2025, 2, 28)  # Fixed date (Friday)
         
         # Calculate Monday of the same week
-        monday = fixed_date - timedelta(days=4)
+        #monday = fixed_date - timedelta(days=4)
         
         # Generate dates for Monday to Sunday in "DD-MM-YY" format
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]

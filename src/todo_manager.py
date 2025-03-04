@@ -45,11 +45,33 @@ class AddTaskDialog(QDialog):
         self.category_dropdown = QComboBox()
         self.category_dropdown.addItems(["Hacken", "Hustle", "Health", "Hobby"])
         self.estimated_time_input = QLineEdit()
+        
+        # Add color dropdown instead of text input
+        self.color_dropdown = QComboBox()
+        # Add a selection of colors in similar tone
+        self.colors = [
+            {"name": "Blue", "hex": "#3498db"},
+            {"name": "Purple", "hex": "#9b59b6"},
+            {"name": "Pink", "hex": "#e91e63"},
+            {"name": "Red", "hex": "#e74c3c"},
+            {"name": "Orange", "hex": "#e67e22"},
+            {"name": "Yellow", "hex": "#f1c40f"},
+            {"name": "Green", "hex": "#2ecc71"},
+            {"name": "Teal", "hex": "#1abc9c"},
+            {"name": "Dark Blue", "hex": "#2c3e50"},
+            {"name": "Dark Purple", "hex": "#3f1c4f"},
+            {"name": "Light Pink", "hex": "#ff6b81"}
+        ]
+        
+        # Add colors to dropdown
+        for color in self.colors:
+            self.color_dropdown.addItem(color["name"])
 
         layout.addRow(QLabel("Task Name:"), self.task_input)
         layout.addRow(QLabel("Type:"), self.type_dropdown)
         layout.addRow(QLabel("Category:"), self.category_dropdown)
         layout.addRow(QLabel("Estimated Time (in hours):"), self.estimated_time_input)
+        layout.addRow(QLabel("Color:"), self.color_dropdown)
 
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttons.accepted.connect(self.accept)
@@ -140,6 +162,8 @@ class TodoApp(QWidget):
     def __init__(self):
         super().__init__()
 
+        self.hide_completed = False
+
         self.setWindowTitle("Todo Manager")
         self.setGeometry(100, 100, 850, 450)  # Breitere Tabelle für neue Spalten
 
@@ -148,9 +172,13 @@ class TodoApp(QWidget):
 
         # Tabelle erstellen
         self.table = QTableWidget()
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["Task", "Subtask", "Status"])
+        self.table.setColumnCount(4)  # Added one column for the color dot
+        self.table.setHorizontalHeaderLabels(["", "Task", "Subtask", "Status"])
         self.table.verticalHeader().setVisible(False)
+        
+        # Make the color dot column narrow
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+        self.table.setColumnWidth(0, 20)
         
         # Drag & Drop Einstellungen
         self.table.setDragEnabled(True)
@@ -167,9 +195,10 @@ class TodoApp(QWidget):
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         
         # Spaltenbreiten
-        self.table.setColumnWidth(0, 200)  # Task
-        self.table.setColumnWidth(1, 300)  # Subtask
-        self.table.setColumnWidth(2, 100)  # Status
+        self.table.setColumnWidth(0, 20)   # Color dot
+        self.table.setColumnWidth(1, 200)  # Task
+        self.table.setColumnWidth(2, 300)  # Subtask
+        self.table.setColumnWidth(3, 100)  # Status
         
         # Verbinde Drag & Drop-Ereignisse
         self.table.startDrag = self.startDrag
@@ -204,7 +233,14 @@ class TodoApp(QWidget):
         self.change_status_button = QPushButton("Change Status")  
         self.change_status_button.setFixedSize(150, 40)
         self.change_status_button.clicked.connect(self.change_status)  
-        button_layout.addWidget(self.change_status_button)  
+        button_layout.addWidget(self.change_status_button)
+
+        # Button zum Ein-/Ausblenden erledigter Aufgaben
+        self.hide_completed_button = QPushButton("Hide Completed")
+        self.hide_completed_button.setFixedSize(150, 40)
+        self.hide_completed_button.setCheckable(True)  # Make it toggleable
+        self.hide_completed_button.clicked.connect(self.toggle_completed_tasks)
+        button_layout.addWidget(self.hide_completed_button)  
         
         # Button-Layout dem Hauptlayout hinzufügen
         self.layout.addLayout(button_layout)
@@ -215,6 +251,19 @@ class TodoApp(QWidget):
         self.layout.addWidget(self.current_task_display)
                 
         self.setLayout(self.layout) 
+        self.load_data()
+
+    def toggle_completed_tasks(self):
+        """Toggle visibility of completed tasks and update the display"""
+        self.hide_completed = self.hide_completed_button.isChecked()
+        
+        # Update button text based on state
+        if self.hide_completed:
+            self.hide_completed_button.setText("Show Completed")
+        else:
+            self.hide_completed_button.setText("Hide Completed")
+        
+        # Reload the data with the new visibility setting
         self.load_data()
         
     def startDrag(self, actions):
@@ -446,27 +495,68 @@ class TodoApp(QWidget):
     
         # Tabelle leeren
         self.table.setRowCount(0)
+        
+        # Filter subtasks based on the hide_completed setting
+        filtered_tasks = []
+        for task in tasks:
+            task_name = task["task"]
+            # Filter subtasks if hide_completed is True
+            if self.hide_completed:
+                filtered_subtasks = [subtask for subtask in task["subtasks"] 
+                                    if subtask["status"] != "Completed"]
+            else:
+                filtered_subtasks = task["subtasks"]
+            
+            # Only include tasks that have visible subtasks
+            if filtered_subtasks:
+                # Create a copy of the task with filtered subtasks
+                filtered_task = task.copy()
+                filtered_task["subtasks"] = filtered_subtasks
+                filtered_tasks.append(filtered_task)
     
-        row_count = sum(len(task["subtasks"]) for task in tasks)
+        # Count total rows needed
+        row_count = sum(len(task["subtasks"]) for task in filtered_tasks)
         self.table.setRowCount(row_count)
     
         row = 0
-        for task in tasks:
+        for task in filtered_tasks:
             task_name = task["task"]
             subtasks = task["subtasks"]
             task_span = len(subtasks)
+            
+            # Get the task color (default to light blue if not set)
+            task_color = task.get("color", "#3498db")
     
             for i, subtask in enumerate(subtasks):
                 if i == 0:
+                    # Statt des einfachen QTableWidgetItem verwenden wir ein Label für den farbigen Punkt
+                    # Das gibt uns mehr Kontrolle über die Positionierung
+                    color_dot_widget = QWidget()
+                    color_dot_layout = QVBoxLayout(color_dot_widget)
+                    color_dot_layout.setContentsMargins(0, 5, 0, 0)  # Oberer Rand für bessere Ausrichtung
+                    color_dot_layout.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+                    
+                    # Label für den farbigen Punkt
+                    dot_label = QLabel("●")
+                    dot_label.setStyleSheet(f"color: {task_color}; font-size: 16px;")
+                    
+                    color_dot_layout.addWidget(dot_label)
+                    self.table.setCellWidget(row, 0, color_dot_widget)
+                    
+                    # Create the task item with normal text in the second column
                     task_item = QTableWidgetItem(task_name)
                     task_item.setTextAlignment(Qt.AlignTop)
-                    self.table.setItem(row, 0, task_item)
+                    self.table.setItem(row, 1, task_item)
+                    
+                    # Already added above
                     if task_span > 1:
+                        # Span both the color dot and task columns
                         self.table.setSpan(row, 0, task_span, 1)
+                        self.table.setSpan(row, 1, task_span, 1)
     
                 # Subtask Name mit zusätzlichen Informationen
                 subtask_item = TaskSubtaskItem(subtask["subtask"], task_name, subtask["subtask"])
-                self.table.setItem(row, 1, subtask_item)
+                self.table.setItem(row, 2, subtask_item)
                 
                 # Status
                 status_item = QTableWidgetItem(subtask["status"])
@@ -481,7 +571,7 @@ class TodoApp(QWidget):
                     act_time = subtask.get("actual_time", "0")
                     latest_in_progress = (task_name, subtask["subtask"], est_time, act_time)
                 
-                self.table.setItem(row, 2, status_item)
+                self.table.setItem(row, 3, status_item)
                 
                 row += 1
     
@@ -505,6 +595,9 @@ class TodoApp(QWidget):
             task_type = dialog.type_dropdown.currentText()
             category = dialog.category_dropdown.currentText()
             estimated_time = dialog.estimated_time_input.text().strip()
+            color_name = dialog.color_dropdown.currentText()
+            # Get the hex code for the selected color
+            color = next((c["hex"] for c in dialog.colors if c["name"] == color_name), "#3498db")
     
             if task_name:
                 data = load_todo()
@@ -514,6 +607,7 @@ class TodoApp(QWidget):
                     "category": category,
                     "estimated_time": estimated_time or "N/A",
                     "actual_time": "0",
+                    "color": color,  # Add color to new tasks
                     "subtasks": []
                 })
                 
@@ -549,7 +643,7 @@ class TodoApp(QWidget):
             return  # Keine Zeile ausgewählt, also nichts zu löschen
         
         # Subtask-Name abrufen
-        subtask_item = self.table.item(selected_row, 1)
+        subtask_item = self.table.item(selected_row, 2)  # Changed column index
         if not subtask_item:
             return  # Falls kein Subtask vorhanden ist
         
@@ -558,7 +652,7 @@ class TodoApp(QWidget):
         # Task-Name suchen 
         task_name = None
         for row in range(selected_row, -1, -1):  # Gehe rückwärts durch die Zeilen
-            item = self.table.item(row, 0)
+            item = self.table.item(row, 1)  # Changed column index
             if item:
                 task_name = item.text()
                 break
@@ -591,7 +685,7 @@ class TodoApp(QWidget):
         if selected_row == -1:
             return  # Keine Zeile ausgewählt
     
-        subtask_item = self.table.item(selected_row, 1)
+        subtask_item = self.table.item(selected_row, 2)  # Changed column index
         if not subtask_item:
             return  # Falls kein Subtask vorhanden ist
     
@@ -600,7 +694,7 @@ class TodoApp(QWidget):
         # Task-Name ermitteln
         task_name = None
         for row in range(selected_row, -1, -1):  # Rückwärts durch Zeilen gehen
-            item = self.table.item(row, 0)
+            item = self.table.item(row, 1)  # Changed column index
             if item:
                 task_name = item.text()
                 break

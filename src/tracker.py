@@ -44,9 +44,6 @@ class MainApp(QWidget):
         self.end_button.setStyleSheet("background-color: none;")  
         self.end_button.clicked.connect(self.close_application)
         
-        # Neues Label für Block-Anzeige
-        self.block_label = QLabel(f"Block: {self.block}", self)
-        
         # Hole die aktuelle Task-Informationen
         latest_task = todo_manager.get_latest_in_progress()
         
@@ -68,25 +65,53 @@ class MainApp(QWidget):
         # Horizontal Layout für die Buttons
         button_layout = QHBoxLayout()
         
+        # macOS-Stil für Buttons
+        button_style = """
+            QPushButton {
+                background-color: #f2f2f2;
+                border: 1px solid #d1d1d1;
+                border-radius: 5px;
+                color: #333333;
+                padding: 5px 15px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #e6e6e6;
+            }
+            QPushButton:pressed {
+                background-color: #d9d9d9;
+            }
+        """
+        
         # Feste Button-Größe definieren
-        button_size = (120, 40)
+        button_size = (120, 30)
         
         self.start_button.setFixedSize(*button_size)
-        self.hold_button.setFixedSize(*button_size)
-        self.end_button.setFixedSize(*button_size)
+        self.start_button.setStyleSheet(button_style)
         
+        self.hold_button.setFixedSize(*button_size)
+        self.hold_button.setStyleSheet(button_style)
+        
+        self.end_button.setFixedSize(*button_size)
+        self.end_button.setStyleSheet(button_style)
+        
+        # Button Layout mit Abständen wie im macOS-Stil
+        button_layout.addStretch(1)  # Platz links hinzufügen
         button_layout.addWidget(self.start_button)
+        button_layout.addSpacing(10)  # Abstand zwischen Buttons
         button_layout.addWidget(self.hold_button)
+        button_layout.addSpacing(10)  # Abstand zwischen Buttons
         button_layout.addWidget(self.end_button)
+        button_layout.addStretch(1)  # Platz rechts hinzufügen
         
         layout.addLayout(button_layout)
         
-        # Status- und Block-Informations-Layout (nebeneinander am Ende)
-        status_block_layout = QHBoxLayout()
-        status_block_layout.addWidget(self.status_label)
-        status_block_layout.addStretch(1)  # Fügt Abstand ein, um Block-Label nach rechts zu schieben
-        status_block_layout.addWidget(self.block_label)
-        layout.addLayout(status_block_layout)
+        # Status-Information (zentriert)
+        status_layout = QHBoxLayout()
+        status_layout.addStretch(1)  # Fügt Abstand ein, um Status-Label zu zentrieren
+        status_layout.addWidget(self.status_label)
+        status_layout.addStretch(1)  # Fügt Abstand ein, um Status-Label zu zentrieren
+        layout.addLayout(status_layout)
 
         self.setLayout(layout)
 
@@ -140,7 +165,43 @@ class MainApp(QWidget):
     def toggle_hold_mode(self):
         """Schaltet den Hold-Modus an/aus"""
         self.mode = 0 if self.mode == 1 else 1
-        self.hold_button.setStyleSheet("background-color: red; color: white;" if self.mode == 0 else "background-color: none;")
+        
+        # macOS-Stil für Buttons
+        button_style = """
+            QPushButton {
+                background-color: #f2f2f2;
+                border: 1px solid #d1d1d1;
+                border-radius: 5px;
+                color: #333333;
+                padding: 5px 15px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #e6e6e6;
+            }
+            QPushButton:pressed {
+                background-color: #d9d9d9;
+            }
+        """
+        
+        hold_button_style_active = """
+            QPushButton {
+                background-color: #e03131;
+                border: 1px solid #c92a2a;
+                border-radius: 5px;
+                color: white;
+                padding: 5px 15px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #c92a2a;
+            }
+            QPushButton:pressed {
+                background-color: #b42525;
+            }
+        """
+        
+        self.hold_button.setStyleSheet(hold_button_style_active if self.mode == 0 else button_style)
 
         # Hole die aktuelle Task-Informationen für den Log
         latest_task = todo_manager.get_latest_in_progress()
@@ -228,10 +289,9 @@ class MainApp(QWidget):
         self.update_timer_label()
         
     def update_labels(self):
-        """Aktualisiert die Labels für Block, Work, Task und Subtask."""
-        self.block_label.setText(f"Block: {self.block}")
-        
-        # Der kreisförmige Fortschrittsbalken zeigt bereits den Arbeit/Pause-Status an
+        """Aktualisiert die Labels"""
+        # Block-Anzeige wurde entfernt, hier ist nichts mehr zu aktualisieren
+        pass
 
     def get_total_time(self):
         """Berechnet die gesamte vergangene Zeit (total_time)"""
