@@ -39,6 +39,24 @@ class AddTaskDialog(QDialog):
         self.setWindowTitle("Neuen Task hinzufügen")
         layout = QFormLayout()
         
+        # Button-Stil definieren (wie in tracker.py)
+        button_style = """
+            QPushButton {
+                background-color: #f2f2f2;
+                border: 1px solid #d1d1d1;
+                border-radius: 5px;
+                color: #333333;
+                padding: 5px 15px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #e6e6e6;
+            }
+            QPushButton:pressed {
+                background-color: #d9d9d9;
+            }
+        """
+        
         self.task_input = QLineEdit()
         self.type_dropdown = QComboBox()
         self.type_dropdown.addItems(["Digital", "Analog"])
@@ -76,6 +94,7 @@ class AddTaskDialog(QDialog):
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
+        self.buttons.setStyleSheet(button_style)  # Button-Stil anwenden
         layout.addWidget(self.buttons)
 
         self.setLayout(layout)
@@ -86,6 +105,24 @@ class AddSubtaskDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Subtask hinzufügen")
         layout = QFormLayout()
+        
+        # Button-Stil definieren (wie in tracker.py)
+        button_style = """
+            QPushButton {
+                background-color: #f2f2f2;
+                border: 1px solid #d1d1d1;
+                border-radius: 5px;
+                color: #333333;
+                padding: 5px 15px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #e6e6e6;
+            }
+            QPushButton:pressed {
+                background-color: #d9d9d9;
+            }
+        """
         
         self.task_dropdown = QComboBox()
         self.populate_tasks()
@@ -102,6 +139,7 @@ class AddSubtaskDialog(QDialog):
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
+        self.buttons.setStyleSheet(button_style)  # Button-Stil anwenden
         layout.addWidget(self.buttons)
         
         self.setLayout(layout)
@@ -119,6 +157,24 @@ class UpdateActualTimeDialog(QDialog):
         self.setWindowTitle("Tatsächliche Zeit aktualisieren")
         self.setMinimumWidth(300)
         layout = QFormLayout()
+        
+        # Button-Stil definieren (wie in tracker.py)
+        button_style = """
+            QPushButton {
+                background-color: #f2f2f2;
+                border: 1px solid #d1d1d1;
+                border-radius: 5px;
+                color: #333333;
+                padding: 5px 15px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #e6e6e6;
+            }
+            QPushButton:pressed {
+                background-color: #d9d9d9;
+            }
+        """
         
         self.task_label = QLabel(task_name)
         self.subtask_label = QLabel(subtask_name)
@@ -142,6 +198,7 @@ class UpdateActualTimeDialog(QDialog):
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
+        self.buttons.setStyleSheet(button_style)  # Button-Stil anwenden
         layout.addWidget(self.buttons)
         
         self.setLayout(layout)
@@ -167,8 +224,31 @@ class TodoApp(QWidget):
         self.setWindowTitle("Todo Manager")
         self.setGeometry(100, 100, 850, 450)  # Breitere Tabelle für neue Spalten
 
+        # Button-Stil definieren (wie in tracker.py)
+        self.button_style = """
+            QPushButton {
+                background-color: #f2f2f2;
+                border: 1px solid #d1d1d1;
+                border-radius: 5px;
+                color: #333333;
+                padding: 5px 15px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #e6e6e6;
+            }
+            QPushButton:pressed {
+                background-color: #d9d9d9;
+            }
+        """
+
         # Hauptlayout als vertikales Layout definieren
         self.layout = QVBoxLayout()
+
+        # Feld für die Anzeige des aktuellen Tasks (jetzt am Anfang)
+        self.current_task_display = QLabel("")  # Startet leer
+        self.current_task_display.setStyleSheet("font-size: 14px; font-weight: normal; padding: 5px; margin-bottom: 10px; background-color: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 4px;")
+        self.layout.addWidget(self.current_task_display)
 
         # Tabelle erstellen
         self.table = QTableWidget()
@@ -215,24 +295,28 @@ class TodoApp(QWidget):
         self.add_task_button = QPushButton("Add Task")
         self.add_task_button.setFixedSize(150, 40)
         self.add_task_button.clicked.connect(self.add_task)
+        self.add_task_button.setStyleSheet(self.button_style)
         button_layout.addWidget(self.add_task_button)
         
         # Button zum Hinzufügen von Subtasks
         self.add_button = QPushButton("Add Subtask")
         self.add_button.setFixedSize(150, 40)
         self.add_button.clicked.connect(self.add_subtask)
+        self.add_button.setStyleSheet(self.button_style)
         button_layout.addWidget(self.add_button)
         
         # Button zum Löschen von Subtasks
         self.delete_button = QPushButton("Delete Subtask")
         self.delete_button.setFixedSize(150, 40)
         self.delete_button.clicked.connect(self.delete_subtask)
+        self.delete_button.setStyleSheet(self.button_style)
         button_layout.addWidget(self.delete_button)
         
         # Button zum Ändern des Status von Subtasks
         self.change_status_button = QPushButton("Change Status")  
         self.change_status_button.setFixedSize(150, 40)
         self.change_status_button.clicked.connect(self.change_status)  
+        self.change_status_button.setStyleSheet(self.button_style)
         button_layout.addWidget(self.change_status_button)
 
         # Button zum Ein-/Ausblenden erledigter Aufgaben
@@ -240,16 +324,12 @@ class TodoApp(QWidget):
         self.hide_completed_button.setFixedSize(150, 40)
         self.hide_completed_button.setCheckable(True)  # Make it toggleable
         self.hide_completed_button.clicked.connect(self.toggle_completed_tasks)
+        self.hide_completed_button.setStyleSheet(self.button_style)
         button_layout.addWidget(self.hide_completed_button)  
         
         # Button-Layout dem Hauptlayout hinzufügen
         self.layout.addLayout(button_layout)
 
-        #Feld für die Anzeige des aktuellen Tasks
-        self.current_task_display = QLabel("")  # Startet leer
-        self.current_task_display.setStyleSheet("font-size: 14px; font-weight: normal; padding: 0px; border: 0px solid gray;")
-        self.layout.addWidget(self.current_task_display)
-                
         self.setLayout(self.layout) 
         self.load_data()
 
@@ -577,13 +657,11 @@ class TodoApp(QWidget):
     
         # Zeige Informationen zum aktuellen "In Progress"-Task
         if latest_in_progress:
-            # Format: Task, Subtask, Est. Time, Actual Time
+            # Format: Task, Subtask
             task, subtask, est_time, act_time = latest_in_progress
             self.current_task_display.setText(
                 f"<b>Current Task:</b> {task} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "
-                f"<b>Subtask:</b> {subtask} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "
-                f"<b>Est. Time:</b> {est_time} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "
-                f"<b>Actual Time:</b> {act_time}"
+                f"<b>Subtask:</b> {subtask}"
             )
         else:
             self.current_task_display.setText("Kein aktueller Task in Bearbeitung.")
