@@ -2,6 +2,13 @@
 
 A comprehensive tool to boost your productivity with todo list management, time tracking, and Google Calendar integration. Optionally includes face recognition to ensure you're actually working on your tasks.
 
+
+
+![Bildschirmfoto 2025-05-05 um 11 03 49](https://github.com/user-attachments/assets/6846de5f-545c-4d36-9d70-62b5fdbdbc55)
+
+
+
+
 ## Main Features
 
 - **Todo Manager**: Manage and organize your tasks with main and subtasks
