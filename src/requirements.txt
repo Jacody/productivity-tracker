@@ -1,0 +1,29 @@
+# Optimierte Anforderungen für den Productivity-Tracker
+
+# GUI-Framework
+PyQt5>=5.15.0
+
+# Computer Vision und Gesichtserkennung
+opencv-python>=4.5.0
+mediapipe>=0.10.0
+numpy>=1.20.0
+
+# Datenverarbeitung und Visualisierung
+pandas>=1.3.0
+matplotlib>=3.5.0 
+tabulate>=0.8.9
+
+# Google Calendar-Integration
+google-api-python-client>=2.100.0
+google-auth-httplib2>=0.1.0
+google-auth-oauthlib>=1.0.0
+
+# Sound-Effekte
+pygame>=2.1.0
+
+# Python-Standardbibliotheken (werden nicht installiert, aber für die Dokumentation aufgeführt)
+# - datetime
+# - sys
+# - os
+# - time
+# - json

@@ -1,0 +1,1043 @@
+import sys
+import os
+import json
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QPushButton, 
+    QHeaderView, QDialog, QLineEdit, QComboBox, QLabel, QFormLayout, QDialogButtonBox, 
+    QDoubleSpinBox, QAbstractItemView, QMenu, QTreeWidget, QTreeWidgetItem, QFrame, QMessageBox
+)
+from PyQt5.QtGui import QColor, QDrag, QCursor
+from PyQt5.QtCore import Qt, QMimeData, QByteArray, QPoint
+
+latest_in_progress = ('Relax', 'Slay', '0', '0')  # (Task, Subtask, Estimated Time, Actual Time)
+
+def get_latest_in_progress():
+    """Getter für die globale Variable"""
+    return latest_in_progress
+
+# Basisverzeichnis bestimmen (geht eine Ebene nach oben)
+base_dir = os.path.abspath(os.path.join(os.getcwd(), ".."))
+todo_path = os.path.join(base_dir, "data", "todo.json")
+
+# Datei einlesen
+def load_todo():
+    if os.path.exists(todo_path):
+        with open(todo_path, "r", encoding="utf-8") as file:
+            return json.load(file)
+    return {"tasks": []}  # Falls keine Datei existiert, leere Struktur zurückgeben
+
+# Datei speichern
+def save_todo(data):
+    os.makedirs(os.path.dirname(todo_path), exist_ok=True)
+    with open(todo_path, "w", encoding="utf-8") as file:
+        json.dump(data, file, indent=4)
+        
+# Dialog für neuen Task
+class AddTaskDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Neuen Task hinzufügen")
+        layout = QFormLayout()
+        
+        # Button-Stil definieren (wie in tracker.py)
+        button_style = """
+            QPushButton {
+                background-color: #f2f2f2;
+                border: 1px solid #d1d1d1;
+                border-radius: 5px;
+                color: #333333;
+                padding: 5px 15px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #e6e6e6;
+            }
+            QPushButton:pressed {
+                background-color: #d9d9d9;
+            }
+        """
+        
+        self.task_input = QLineEdit()
+        self.type_dropdown = QComboBox()
+        self.type_dropdown.addItems(["Digital", "Analog"])
+        self.category_dropdown = QComboBox()
+        self.category_dropdown.addItems(["Hacken", "Hustle", "Health", "Hobby"])
+        self.estimated_time_input = QLineEdit()
+        
+        # Add color dropdown instead of text input
+        self.color_dropdown = QComboBox()
+        # Add a selection of colors in similar tone
+        self.colors = [
+            {"name": "Blue", "hex": "#3498db"},
+            {"name": "Purple", "hex": "#9b59b6"},
+            {"name": "Pink", "hex": "#e91e63"},
+            {"name": "Red", "hex": "#e74c3c"},
+            {"name": "Orange", "hex": "#e67e22"},
+            {"name": "Yellow", "hex": "#f1c40f"},
+            {"name": "Green", "hex": "#2ecc71"},
+            {"name": "Teal", "hex": "#1abc9c"},
+            {"name": "Dark Blue", "hex": "#2c3e50"},
+            {"name": "Dark Purple", "hex": "#3f1c4f"},
+            {"name": "Light Pink", "hex": "#ff6b81"}
+        ]
+        
+        # Add colors to dropdown
+        for color in self.colors:
+            self.color_dropdown.addItem(color["name"])
+
+        layout.addRow(QLabel("Task Name:"), self.task_input)
+        layout.addRow(QLabel("Type:"), self.type_dropdown)
+        layout.addRow(QLabel("Category:"), self.category_dropdown)
+        layout.addRow(QLabel("Estimated Time (in hours):"), self.estimated_time_input)
+        layout.addRow(QLabel("Color:"), self.color_dropdown)
+
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+        self.buttons.setStyleSheet(button_style)  # Button-Stil anwenden
+        layout.addWidget(self.buttons)
+
+        self.setLayout(layout)
+
+# Dialog für neuen Subtask
+class AddSubtaskDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Subtask hinzufügen")
+        layout = QFormLayout()
+        
+        # Button-Stil definieren (wie in tracker.py)
+        button_style = """
+            QPushButton {
+                background-color: #f2f2f2;
+                border: 1px solid #d1d1d1;
+                border-radius: 5px;
+                color: #333333;
+                padding: 5px 15px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #e6e6e6;
+            }
+            QPushButton:pressed {
+                background-color: #d9d9d9;
+            }
+        """
+        
+        self.task_dropdown = QComboBox()
+        self.populate_tasks()
+        self.subtask_input = QLineEdit()
+        self.status_dropdown = QComboBox()
+        self.status_dropdown.addItems(["Pending", "In Progress", "Completed"])
+        self.estimated_time_input = QLineEdit()
+        
+        layout.addRow(QLabel("Task:"), self.task_dropdown)
+        layout.addRow(QLabel("Subtask:"), self.subtask_input)
+        layout.addRow(QLabel("Status:"), self.status_dropdown)
+        layout.addRow(QLabel("Estimated Time (in hours):"), self.estimated_time_input)
+        
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+        self.buttons.setStyleSheet(button_style)  # Button-Stil anwenden
+        layout.addWidget(self.buttons)
+        
+        self.setLayout(layout)
+    
+    def populate_tasks(self):
+        data = load_todo()
+        self.task_dropdown.clear()
+        tasks = [task["task"] for task in data.get("tasks", [])]
+        self.task_dropdown.addItems(tasks)
+
+# Dialog zum Aktualisieren der tatsächlichen Zeit
+class UpdateActualTimeDialog(QDialog):
+    def __init__(self, task_name, subtask_name, current_time, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Tatsächliche Zeit aktualisieren")
+        self.setMinimumWidth(300)
+        layout = QFormLayout()
+        
+        # Button-Stil definieren (wie in tracker.py)
+        button_style = """
+            QPushButton {
+                background-color: #f2f2f2;
+                border: 1px solid #d1d1d1;
+                border-radius: 5px;
+                color: #333333;
+                padding: 5px 15px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #e6e6e6;
+            }
+            QPushButton:pressed {
+                background-color: #d9d9d9;
+            }
+        """
+        
+        self.task_label = QLabel(task_name)
+        self.subtask_label = QLabel(subtask_name)
+        
+        # Spinner für die tatsächliche Zeit mit Dezimalstellen
+        self.actual_time_input = QDoubleSpinBox()
+        self.actual_time_input.setRange(0, 1000)  # 0 bis 1000 Stunden
+        self.actual_time_input.setDecimals(2)     # Zwei Dezimalstellen
+        self.actual_time_input.setSingleStep(0.25)  # 15-Minuten-Schritte (0.25 Stunden)
+        
+        # Aktuellen Wert einstellen
+        try:
+            self.actual_time_input.setValue(float(current_time))
+        except (ValueError, TypeError):
+            self.actual_time_input.setValue(0.0)
+        
+        layout.addRow(QLabel("Task:"), self.task_label)
+        layout.addRow(QLabel("Subtask:"), self.subtask_label)
+        layout.addRow(QLabel("Tatsächliche Zeit (Stunden):"), self.actual_time_input)
+        
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+        self.buttons.setStyleSheet(button_style)  # Button-Stil anwenden
+        layout.addWidget(self.buttons)
+        
+        self.setLayout(layout)
+    
+    def get_actual_time(self):
+        """Gibt die eingegebene tatsächliche Zeit zurück"""
+        return str(self.actual_time_input.value())
+
+# Benutzerdefinierter TreeWidgetItem für Tasks und Subtasks
+class TaskTreeItem(QTreeWidgetItem):
+    def __init__(self, parent=None, is_task=True):
+        super().__init__(parent)
+        self.is_task = is_task
+        self.task_name = ""
+        self.subtask_name = ""
+        self.color = ""
+        self.status = ""
+        self.estimated_time = ""
+        self.actual_time = ""
+        self.setFlags(self.flags() | Qt.ItemIsEditable | Qt.ItemIsDropEnabled)
+        if not is_task:
+            # Subtasks können auch gezogen werden
+            self.setFlags(self.flags() | Qt.ItemIsDragEnabled)
+
+# TreeWidget mit Drag-and-Drop-Unterstützung
+class DraggableTreeWidget(QTreeWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent_widget = parent
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.setDragDropOverwriteMode(False)
+        self.setDropIndicatorShown(True)
+        self.setDragDropMode(QAbstractItemView.DragDrop)
+        self.setSelectionMode(QAbstractItemView.SingleSelection)
+        
+        # Spaltenreihenfolge anpassen
+        self.setHeaderLabels(["Task/Subtask", "Tatsächliche Zeit", "Geschätzte Zeit", "Status"])
+        
+        # Spaltenbreiten initialisieren
+        self.updateColumnWidths()
+        
+        # Aktiviere das Editieren per Doppelklick
+        self.setEditTriggers(QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed)
+        
+        # Stil anpassen für bessere visuelle Darstellung
+        self.setStyleSheet("""
+            QTreeWidget {
+                background-color: #ffffff;
+                border: 1px solid #d1d1d1;
+                border-radius: 5px;
+                padding: 5px;
+            }
+            QTreeWidget::item {
+                padding: 5px;
+                margin: 2px 0;
+                border-radius: 4px;
+            }
+            QTreeWidget::item:selected {
+                background-color: #e6f0fa;
+                border: 1px solid #a0c4e4;
+                color: black;
+            }
+        """)
+    
+    def updateColumnWidths(self):
+        """Aktualisiert die Spaltenbreiten basierend auf der aktuellen Breite des Widgets"""
+        total_width = self.width()
+        if total_width > 0:  # Nur aktualisieren, wenn die Breite gültig ist
+            # Berechne und setze die Spaltenbreiten basierend auf Prozentangaben
+            self.setColumnWidth(0, int(total_width * 0.6))  # Task/Subtask (60%)
+            self.setColumnWidth(1, int(total_width * 0.1))  # Tatsächliche Zeit (10%)
+            self.setColumnWidth(2, int(total_width * 0.1))  # Geschätzte Zeit (10%)
+            self.setColumnWidth(3, int(total_width * 0.1))  # Status (20%)
+    
+    def resizeEvent(self, event):
+        """Überschreiben des Resize-Events, um Spaltenbreiten anzupassen"""
+        super().resizeEvent(event)
+        self.updateColumnWidths()
+        
+    def showEvent(self, event):
+        """Überschreiben des Show-Events, um Spaltenbreiten bei erster Anzeige korrekt zu setzen"""
+        super().showEvent(event)
+        self.updateColumnWidths()
+            
+    def dropEvent(self, event):
+        if event.source() == self:
+            # Aktuelles ausgewähltes Item
+            target_item = self.itemAt(event.pos())
+            drag_item = self.currentItem()
+            
+            if not target_item or not drag_item:
+                return
+            
+            # Keine Aktion, wenn wir versuchen, auf sich selbst zu ziehen
+            if target_item == drag_item:
+                return
+            
+            # Wenn wir ein Subtask item ziehen
+            if not drag_item.is_task:
+                # Wenn wir auf einen Task ziehen, fügen wir es als dessen Subtask hinzu
+                if target_item.is_task:
+                    # Entferne das Item von seinem aktuellen Elternelement
+                    old_parent = drag_item.parent()
+                    old_parent_index = old_parent.indexOfChild(drag_item)
+                    old_parent.takeChild(old_parent_index)
+                    
+                    # Füge es dem Ziel-Task hinzu
+                    target_item.addChild(drag_item)
+                    
+                    # JSON-Daten aktualisieren
+                    self.parent_widget.update_json_from_tree()
+                # Wenn wir auf einen Subtask ziehen, fügen wir es nach diesem Subtask ein
+                else:
+                    parent_item = target_item.parent()
+                    
+                    # Nur fortfahren, wenn das Ziel ein gültiger Subtask mit einem Elternelement ist
+                    if parent_item:
+                        # Entferne das Item von seinem aktuellen Elternelement
+                        old_parent = drag_item.parent()
+                        old_parent_index = old_parent.indexOfChild(drag_item)
+                        old_parent.takeChild(old_parent_index)
+                        
+                        # Füge es nach dem Ziel-Subtask ein
+                        target_index = parent_item.indexOfChild(target_item)
+                        parent_item.insertChild(target_index + 1, drag_item)
+                        
+                        # JSON-Daten aktualisieren
+                        self.parent_widget.update_json_from_tree()
+            
+            # Wenn wir einen Task ziehen
+            elif drag_item.is_task:
+                # Wenn wir auf einen Task ziehen, ändern wir die Reihenfolge
+                if target_item.is_task:
+                    # Finde die Indizes beider Tasks auf der obersten Ebene
+                    drag_index = self.indexOfTopLevelItem(drag_item)
+                    target_index = self.indexOfTopLevelItem(target_item)
+                    
+                    # Nur fortfahren, wenn beide gültige Top-Level-Items sind
+                    if drag_index >= 0 and target_index >= 0:
+                        # Entferne das Item
+                        self.takeTopLevelItem(drag_index)
+                        
+                        # Bei gleicher Richtung einfügen
+                        if target_index > drag_index:
+                            self.insertTopLevelItem(target_index, drag_item)
+                        else:
+                            # Wenn wir nach oben ziehen, müssen wir einen Platz davor einfügen
+                            self.insertTopLevelItem(target_index, drag_item)
+                        
+                        # JSON-Daten aktualisieren
+                        self.parent_widget.update_json_from_tree()
+            
+            event.accept()
+        else:
+            event.ignore()
+    
+    def contextMenuEvent(self, event):
+        # Rechtsklick-Menü für zusätzliche Funktionen
+        item = self.itemAt(event.pos())
+        if item:
+            menu = QMenu(self)
+            
+            if item.is_task:
+                # Menüoptionen für Tasks
+                add_subtask_action = menu.addAction("Subtask hinzufügen")
+                delete_task_action = menu.addAction("Task löschen")
+                change_color_action = menu.addAction("Farbe ändern")
+                
+                action = menu.exec_(event.globalPos())
+                
+                if action == add_subtask_action:
+                    self.parent_widget.add_subtask_to_task(item)
+                elif action == delete_task_action:
+                    self.parent_widget.delete_task(item)
+                elif action == change_color_action:
+                    self.parent_widget.change_task_color(item)
+            else:
+                # Menüoptionen für Subtasks
+                change_status_action = menu.addAction("Status ändern")
+                edit_times_action = menu.addAction("Zeiten bearbeiten")
+                delete_subtask_action = menu.addAction("Subtask löschen")
+                
+                action = menu.exec_(event.globalPos())
+                
+                if action == change_status_action:
+                    self.parent_widget.cycle_subtask_status(item)
+                elif action == edit_times_action:
+                    self.parent_widget.edit_subtask_times(item)
+                elif action == delete_subtask_action:
+                    self.parent_widget.delete_subtask(item)
+
+# GUI-Klasse mit QTreeWidget
+class TodoApp(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.hide_completed = True  # Standardmäßig erledigte Aufgaben ausblenden
+
+        self.setWindowTitle("Todo Manager")
+        self.setGeometry(100, 100, 1000, 600)  # Größere Abmessungen für den Tree-View
+
+        # Button-Stil definieren 
+        self.button_style = """
+            QPushButton {
+                background-color: #f2f2f2;
+                border: 1px solid #d1d1d1;
+                border-radius: 5px;
+                color: #333333;
+                padding: 5px 15px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #e6e6e6;
+            }
+            QPushButton:pressed {
+                background-color: #d9d9d9;
+            }
+        """
+
+        # Hauptlayout als vertikales Layout definieren
+        self.layout = QVBoxLayout()
+        self.layout.setSpacing(10)
+        self.layout.setContentsMargins(15, 15, 15, 15)
+
+        # Feld für die Anzeige des aktuellen Tasks
+        self.current_task_display = QLabel("")
+        self.current_task_display.setStyleSheet("""
+            font-size: 14px; 
+            font-weight: normal; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            background-color: #f8f8f8; 
+            border: 1px solid #e0e0e0; 
+            border-radius: 4px;
+        """)
+        self.layout.addWidget(self.current_task_display)
+
+        # Trennlinie unter dem aktuellen Task
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        separator.setStyleSheet("background-color: #e0e0e0;")
+        self.layout.addWidget(separator)
+
+        # TreeWidget erstellen
+        self.tree = DraggableTreeWidget(self)
+        self.layout.addWidget(self.tree)
+        
+        # Horizontales Layout für Buttons
+        button_layout = QHBoxLayout()
+        
+        # Button zum Hinzufügen eines Tasks
+        self.add_task_button = QPushButton("Task hinzufügen")
+        self.add_task_button.setFixedSize(150, 40)
+        self.add_task_button.clicked.connect(self.add_task)
+        self.add_task_button.setStyleSheet(self.button_style)
+        button_layout.addWidget(self.add_task_button)
+        
+        # Button zum Hinzufügen von Subtasks
+        self.add_button = QPushButton("Subtask hinzufügen")
+        self.add_button.setFixedSize(150, 40)
+        self.add_button.clicked.connect(self.add_subtask)
+        self.add_button.setStyleSheet(self.button_style)
+        button_layout.addWidget(self.add_button)
+
+        # Button zum Ein-/Ausblenden erledigter Aufgaben
+        self.hide_completed_button = QPushButton("Erledigte anzeigen")  # Text angepasst
+        self.hide_completed_button.setFixedSize(150, 40)
+        self.hide_completed_button.setCheckable(True)  
+        self.hide_completed_button.setChecked(True)  # Standardmäßig aktiviert
+        self.hide_completed_button.clicked.connect(self.toggle_completed_tasks)
+        self.hide_completed_button.setStyleSheet(self.button_style)
+        button_layout.addWidget(self.hide_completed_button)  
+        
+        # Button zum Ändern des Status eines ausgewählten Subtasks
+        self.change_status_button = QPushButton("Status ändern")
+        self.change_status_button.setFixedSize(150, 40)
+        self.change_status_button.clicked.connect(self.change_selected_subtask_status)
+        self.change_status_button.setStyleSheet(self.button_style)
+        button_layout.addWidget(self.change_status_button)
+        
+        # Button-Layout dem Hauptlayout hinzufügen
+        self.layout.addLayout(button_layout)
+
+        self.setLayout(self.layout) 
+        self.load_data()
+
+    def toggle_completed_tasks(self):
+        """Wechselt Sichtbarkeit erledigter Tasks und aktualisiert die Anzeige"""
+        self.hide_completed = self.hide_completed_button.isChecked()
+        
+        # Aktualisiere Button-Text basierend auf Status
+        if self.hide_completed:
+            self.hide_completed_button.setText("Erledigte anzeigen")
+        else:
+            self.hide_completed_button.setText("Erledigte ausblenden")
+        
+        # Daten mit der neuen Einstellung neu laden
+        self.load_data()
+        
+    def load_data(self):
+        global latest_in_progress  # Zugriff auf die globale Variable
+        data = load_todo()
+        tasks = data.get("tasks", [])
+    
+        # Tree leeren
+        self.tree.clear()
+        
+        # Tasks hinzufügen
+        for task in tasks:
+            task_name = task["task"]
+            task_color = task.get("color", "#3498db")
+            
+            # Task-Element erstellen
+            task_item = TaskTreeItem(None, is_task=True)
+            task_item.task_name = task_name
+            task_item.color = task_color
+            task_item.setText(0, task_name)
+            
+            # Setze Hintergrundfarbe für den Task (abgeschwächt für bessere Lesbarkeit)
+            color = QColor(task_color)
+            # Mache die Farbe heller und transparenter für den Hintergrund
+            color.setAlpha(40)  # Sehr transparent
+            task_item.setBackground(0, color)
+            
+            # Setze auch eine farbige linke Randbegrenzung
+            task_item.setForeground(0, QColor(task_color))  # Text in der Task-Farbe
+            
+            # Fett für Task-Namen
+            font = task_item.font(0)
+            font.setBold(True)
+            task_item.setFont(0, font)
+            
+            # Setze das Symbol für ein-/ausklappen explizit
+            task_item.setChildIndicatorPolicy(QTreeWidgetItem.ShowIndicator)
+            
+            # Subtasks verarbeiten
+            has_visible_subtasks = False
+            
+            # Summiere die tatsächlichen und geschätzten Zeiten für alle Subtasks
+            total_actual_time = 0.0
+            total_estimated_time = 0.0
+            
+            for subtask in task["subtasks"]:
+                subtask_name = subtask["subtask"]
+                status = subtask["status"]
+                estimated_time = subtask.get("estimated_time", "0")
+                actual_time = subtask.get("actual_time", "0")
+                
+                # Addiere zu den Gesamtsummen für den Task
+                try:
+                    total_actual_time += float(actual_time) if actual_time != "N/A" else 0.0
+                    total_estimated_time += float(estimated_time) if estimated_time != "N/A" else 0.0
+                except ValueError:
+                    pass  # Ignoriere Konvertierungsfehler
+                
+                # Überspringe, wenn "Completed" und Hide-Completed aktiviert ist
+                if self.hide_completed and status == "Completed":
+                    continue
+                
+                # Subtask-Element erstellen
+                subtask_item = TaskTreeItem(task_item, is_task=False)
+                subtask_item.task_name = task_name
+                subtask_item.subtask_name = subtask_name
+                subtask_item.status = status
+                subtask_item.estimated_time = estimated_time
+                subtask_item.actual_time = actual_time
+                
+                subtask_item.setText(0, subtask_name)
+                
+                # Formatiere die tatsächliche Zeit für die Anzeige
+                formatted_actual_time = self.format_time_display(actual_time)
+                subtask_item.setText(1, formatted_actual_time)
+                
+                # Formatiere die geschätzte Zeit für die Anzeige
+                formatted_estimated_time = self.format_time_display(estimated_time)
+                subtask_item.setText(2, formatted_estimated_time)
+                
+                subtask_item.setText(3, status)         # Status als vierte Spalte
+                
+                # Setze Hintergrundfarbe basierend auf Status
+                if status == "Completed":
+                    subtask_item.setBackground(3, QColor(144, 238, 144))  # Grün für erledigt
+                elif status == "In Progress":
+                    subtask_item.setBackground(3, QColor(255, 255, 102))  # Gelb für in Arbeit
+                    # Erweiterte Informationen für in_progress
+                    latest_in_progress = (task_name, subtask_name, estimated_time, actual_time)
+                
+                task_item.addChild(subtask_item)
+                has_visible_subtasks = True
+            
+            # Setze die summierten Zeiten für den Task
+            task_item.actual_time = str(total_actual_time)
+            task_item.estimated_time = str(total_estimated_time)
+            
+            # Zeige die summierten Zeiten für den Task an
+            formatted_total_actual = self.format_time_display(str(total_actual_time))
+            formatted_total_estimated = self.format_time_display(str(total_estimated_time))
+            
+            task_item.setText(1, formatted_total_actual)  # Tatsächliche Zeit
+            task_item.setText(2, formatted_total_estimated)  # Geschätzte Zeit
+            
+            # Nur Tasks mit sichtbaren Subtasks hinzufügen, wenn hide_completed aktiv ist
+            if has_visible_subtasks or not self.hide_completed:
+                self.tree.addTopLevelItem(task_item)
+                # Standardmäßig ausgeklappt
+                task_item.setExpanded(True)
+    
+        # Zeige Informationen zum aktuellen "In Progress"-Task
+        if latest_in_progress:
+            task, subtask, est_time, act_time = latest_in_progress
+            formatted_est_time = self.format_time_display(est_time)
+            formatted_act_time = self.format_time_display(act_time)
+            
+            self.current_task_display.setText(
+                f"<b>Aktueller Task:</b> {task} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "
+                f"<b>Subtask:</b> {subtask} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "
+                f"<b>Geschätzte Zeit:</b> {formatted_est_time} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "
+                f"<b>Tatsächliche Zeit:</b> {formatted_act_time}"
+            )
+        else:
+            self.current_task_display.setText("Kein aktueller Task in Bearbeitung.")
+
+    def format_time_display(self, time_value):
+        """Formatiert einen Zeitwert für die Anzeige im Format 8.5h"""
+        if time_value == "N/A" or not time_value:
+            return "N/A"
+            
+        try:
+            time_float = float(time_value)
+            # Formatiere als Dezimalzahl mit einer Nachkommastelle, füge "h" hinzu
+            return f"{time_float:.1f}h"
+        except ValueError:
+            return time_value  # Bei Fehler den Originalwert zurückgeben
+
+    def update_json_from_tree(self):
+        """Aktualisiert die JSON-Datei basierend auf dem aktuellen Zustand des TreeWidget
+        und behält ausgeblendete erledigte Aufgaben bei"""
+        # Zuerst bestehende Daten laden, um ausgeblendete erledigte Aufgaben zu erhalten
+        existing_data = load_todo()
+        existing_tasks = {task["task"]: task for task in existing_data.get("tasks", [])}
+        
+        # Neue Daten vorbereiten
+        data = {"tasks": []}
+        
+        # Durchlaufe alle Top-Level-Items (Tasks)
+        for i in range(self.tree.topLevelItemCount()):
+            task_item = self.tree.topLevelItem(i)
+            task_name = task_item.text(0)
+            task_color = task_item.color
+            
+            # Subtasks aus der Baumansicht
+            visible_subtasks = []
+            for j in range(task_item.childCount()):
+                subtask_item = task_item.child(j)
+                subtask_name = subtask_item.text(0)
+                actual_time = subtask_item.text(1)    # Tatsächliche Zeit aus zweiter Spalte
+                estimated_time = subtask_item.text(2) # Geschätzte Zeit aus dritter Spalte
+                status = subtask_item.text(3)         # Status aus vierter Spalte
+                
+                subtask_obj = {
+                    "subtask": subtask_name,
+                    "status": status,
+                    "estimated_time": estimated_time,
+                    "actual_time": actual_time
+                }
+                
+                visible_subtasks.append(subtask_obj)
+            
+            # Task-Objekt erstellen
+            task_obj = {
+                "task": task_name,
+                "type": "Digital",  # Standard oder aus den Elementen holen
+                "category": "Hacken",  # Standard oder aus den Elementen holen
+                "estimated_time": task_item.estimated_time,
+                "actual_time": task_item.actual_time,
+                "color": task_color,
+                "subtasks": []
+            }
+            
+            # Wenn der Task bereits existiert und wir erledigte Aufgaben ausblenden
+            if task_name in existing_tasks and self.hide_completed:
+                # Bestehende erledigte Subtasks beibehalten
+                existing_subtasks = existing_tasks[task_name].get("subtasks", [])
+                # Dictionary für schnellen Zugriff auf sichtbare Subtasks
+                visible_subtask_dict = {s["subtask"]: s for s in visible_subtasks}
+                
+                for subtask in existing_subtasks:
+                    subtask_name = subtask["subtask"]
+                    # Wenn es ein erledigter Subtask ist, der nicht im Tree angezeigt wird
+                    if subtask["status"] == "Completed" and subtask_name not in visible_subtask_dict:
+                        # Behalte den erledigten Subtask bei
+                        task_obj["subtasks"].append(subtask)
+            
+            # Sichtbare Subtasks hinzufügen
+            task_obj["subtasks"].extend(visible_subtasks)
+            
+            data["tasks"].append(task_obj)
+        
+        # Speichern der aktualisierten Daten
+        save_todo(data)
+        
+        # Aktualisiere die Anzeige des aktuellen Tasks
+        self.update_current_task_display()
+
+    def update_current_task_display(self):
+        """Aktualisiert die Anzeige des aktuellen Tasks"""
+        global latest_in_progress
+        
+        # Suche nach einem "In Progress" Subtask
+        for i in range(self.tree.topLevelItemCount()):
+            task_item = self.tree.topLevelItem(i)
+            task_name = task_item.text(0)
+            
+            for j in range(task_item.childCount()):
+                subtask_item = task_item.child(j)
+                subtask_name = subtask_item.text(0)
+                status = subtask_item.text(3)  # Status ist jetzt in Spalte 3
+                
+                if status == "In Progress":
+                    actual_time = subtask_item.text(1)    # Tatsächliche Zeit aus Spalte 1
+                    estimated_time = subtask_item.text(2) # Geschätzte Zeit aus Spalte 2
+                    latest_in_progress = (task_name, subtask_name, estimated_time, actual_time)
+                    
+                    self.current_task_display.setText(
+                        f"<b>Aktueller Task:</b> {task_name} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "
+                        f"<b>Subtask:</b> {subtask_name} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "
+                        f"<b>Geschätzte Zeit:</b> {estimated_time}h &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "
+                        f"<b>Tatsächliche Zeit:</b> {actual_time}h"
+                    )
+                    return
+        
+        # Wenn kein "In Progress" Task gefunden wurde
+        latest_in_progress = ("Relax", "Slay", "0", "0")
+        self.current_task_display.setText("Kein aktueller Task in Bearbeitung.")
+
+    def add_task(self):
+        dialog = AddTaskDialog(self)
+        if dialog.exec_():
+            task_name = dialog.task_input.text().strip()
+            task_type = dialog.type_dropdown.currentText()
+            category = dialog.category_dropdown.currentText()
+            estimated_time = dialog.estimated_time_input.text().strip()
+            color_name = dialog.color_dropdown.currentText()
+            # Get the hex code for the selected color
+            color = next((c["hex"] for c in dialog.colors if c["name"] == color_name), "#3498db")
+    
+            if task_name:
+                # Task zum TreeWidget hinzufügen
+                task_item = TaskTreeItem(None, is_task=True)
+                task_item.task_name = task_name
+                task_item.color = color
+                task_item.setText(0, task_name)
+                
+                # Setze Hintergrundfarbe für den Task (abgeschwächt für bessere Lesbarkeit)
+                color_obj = QColor(color)
+                color_obj.setAlpha(40)  # Sehr transparent
+                task_item.setBackground(0, color_obj)
+                
+                # Fett für Task-Namen
+                font = task_item.font(0)
+                font.setBold(True)
+                task_item.setFont(0, font)
+                
+                # Setze das Symbol für ein-/ausklappen explizit
+                task_item.setChildIndicatorPolicy(QTreeWidgetItem.ShowIndicator)
+                
+                self.tree.addTopLevelItem(task_item)
+                task_item.setExpanded(True)
+                
+                # Aktualisiere JSON-Datei
+                self.update_json_from_tree()
+
+    def add_subtask(self):
+        dialog = AddSubtaskDialog(self)
+        if dialog.exec_():
+            task_name = dialog.task_dropdown.currentText().strip()
+            subtask_name = dialog.subtask_input.text().strip()
+            status = dialog.status_dropdown.currentText()
+            estimated_time = dialog.estimated_time_input.text().strip()
+
+            if task_name and subtask_name:
+                # Finde das entsprechende Task-Item
+                for i in range(self.tree.topLevelItemCount()):
+                    task_item = self.tree.topLevelItem(i)
+                    if task_item.text(0) == task_name:
+                        # Subtask zum Task hinzufügen
+                        subtask_item = TaskTreeItem(task_item, is_task=False)
+                        subtask_item.task_name = task_name
+                        subtask_item.subtask_name = subtask_name
+                        subtask_item.status = status
+                        subtask_item.estimated_time = estimated_time or "0"
+                        subtask_item.actual_time = "0"
+                        
+                        subtask_item.setText(0, subtask_name)
+                        subtask_item.setText(1, "0.0h")  # Tatsächliche Zeit initial als 0.0h
+                        subtask_item.setText(2, estimated_time or "0") # Geschätzte Zeit
+                        subtask_item.setText(3, status)  # Status
+                        
+                        # Setze Hintergrundfarbe basierend auf Status
+                        if status == "Completed":
+                            subtask_item.setBackground(3, QColor(144, 238, 144))  # Grün für erledigt
+                        elif status == "In Progress":
+                            subtask_item.setBackground(3, QColor(255, 255, 102))  # Gelb für in Arbeit
+                        
+                        task_item.addChild(subtask_item)
+                        task_item.setExpanded(True)
+                        
+                        # Task-Zeiten aktualisieren
+                        self.update_task_times(task_item)
+                        
+                        # Aktualisiere JSON-Datei
+                        self.update_json_from_tree()
+
+    def add_subtask_to_task(self, task_item):
+        """Fügt einen Subtask zu einem bestehenden Task hinzu"""
+        dialog = AddSubtaskDialog(self)
+        
+        # Aktuellen Task als Vorauswahl setzen
+        dialog.task_dropdown.setCurrentText(task_item.text(0))
+        dialog.task_dropdown.setEnabled(False)  # Sperren, da Task bereits vorgegeben
+        
+        if dialog.exec_():
+            subtask_name = dialog.subtask_input.text()
+            status = dialog.status_dropdown.currentText()
+            estimated_time = dialog.estimated_time_input.text()
+            
+            # Verhindere Duplizierung von Subtask-Namen innerhalb eines Tasks
+            for i in range(task_item.childCount()):
+                if task_item.child(i).text(0) == subtask_name:
+                    QMessageBox.warning(self, "Warnung", 
+                                        "Ein Subtask mit diesem Namen existiert bereits für diesen Task.")
+                    return
+            
+            # Neuen Subtask hinzufügen
+            subtask_item = TaskTreeItem(task_item, is_task=False)
+            subtask_item.task_name = task_item.text(0)
+            subtask_item.subtask_name = subtask_name
+            subtask_item.status = status
+            subtask_item.estimated_time = estimated_time
+            subtask_item.actual_time = "0"  # Neue Subtasks haben 0 tatsächliche Zeit
+            
+            subtask_item.setText(0, subtask_name)
+            subtask_item.setText(1, "0.0h")  # Tatsächliche Zeit initial 0
+            subtask_item.setText(2, estimated_time)  # Geschätzte Zeit aus Dialog
+            subtask_item.setText(3, status)  # Status aus Dialog
+            
+            # Setze Hintergrundfarbe basierend auf Status
+            if status == "Completed":
+                subtask_item.setBackground(3, QColor(144, 238, 144))  # Grün für erledigt
+            elif status == "In Progress":
+                subtask_item.setBackground(3, QColor(255, 255, 102))  # Gelb für in Arbeit
+            
+            task_item.addChild(subtask_item)
+            
+            # Task-Zeiten aktualisieren
+            self.update_task_times(task_item)
+            
+            # JSON-Datei aktualisieren
+            self.update_json_from_tree()
+    
+    def delete_task(self, task_item):
+        """Löscht einen Task aus dem Tree und der JSON-Datei"""
+        index = self.tree.indexOfTopLevelItem(task_item)
+        if index >= 0:
+            self.tree.takeTopLevelItem(index)
+            self.update_json_from_tree()
+
+    def delete_subtask(self, subtask_item):
+        """Löscht einen Subtask"""
+        parent_item = subtask_item.parent()
+        if parent_item:
+            parent_item.removeChild(subtask_item)
+            
+            # Task-Zeiten aktualisieren
+            self.update_task_times(parent_item)
+            
+            # JSON-Datei aktualisieren
+            self.update_json_from_tree()
+
+    def cycle_subtask_status(self, subtask_item):
+        """Wechselt den Status eines Subtasks zwischen 'Pending', 'In Progress' und 'Completed'"""
+        current_status = subtask_item.text(3)
+        status_cycle = {"Pending": "In Progress", "In Progress": "Completed", "Completed": "Pending"}
+        next_status = status_cycle.get(current_status, "Pending")
+        
+        # Status aktualisieren
+        subtask_item.setText(3, next_status)
+        subtask_item.status = next_status
+        
+        # Hintergrundfarbe basierend auf neuem Status setzen
+        if next_status == "Completed":
+            subtask_item.setBackground(3, QColor(144, 238, 144))  # Grün für erledigt
+        elif next_status == "In Progress":
+            subtask_item.setBackground(3, QColor(255, 255, 102))  # Gelb für in Arbeit
+        else:
+            subtask_item.setBackground(3, QColor())  # Standardfarbe für Pending
+        
+        # Task-Zeiten aktualisieren
+        parent_item = subtask_item.parent()
+        if parent_item:
+            self.update_task_times(parent_item)
+        
+        # Aktualisiere JSON-Datei
+        self.update_json_from_tree()
+
+    def edit_subtask_times(self, subtask_item):
+        """Bearbeitet die geschätzte und tatsächliche Zeit eines Subtasks"""
+        dialog = UpdateActualTimeDialog(
+            subtask_item.task_name, 
+            subtask_item.subtask_name, 
+            subtask_item.text(1),  # Tatsächliche Zeit ist jetzt in Spalte 1
+            self
+        )
+        
+        if dialog.exec_():
+            actual_time = dialog.get_actual_time()
+            subtask_item.setText(1, actual_time)
+            subtask_item.actual_time = actual_time
+            
+            # Task-Zeiten aktualisieren
+            parent_item = subtask_item.parent()
+            if parent_item:
+                self.update_task_times(parent_item)
+            
+            # Aktualisiere JSON-Datei
+            self.update_json_from_tree()
+
+    def change_task_color(self, task_item):
+        """Ändert die Farbe eines Tasks"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Task-Farbe ändern")
+        layout = QFormLayout()
+        
+        color_dropdown = QComboBox()
+        colors = [
+            {"name": "Blau", "hex": "#3498db"},
+            {"name": "Lila", "hex": "#9b59b6"},
+            {"name": "Pink", "hex": "#e91e63"},
+            {"name": "Rot", "hex": "#e74c3c"},
+            {"name": "Orange", "hex": "#e67e22"},
+            {"name": "Gelb", "hex": "#f1c40f"},
+            {"name": "Grün", "hex": "#2ecc71"},
+            {"name": "Türkis", "hex": "#1abc9c"},
+            {"name": "Dunkelblau", "hex": "#2c3e50"},
+            {"name": "Dunkellila", "hex": "#3f1c4f"},
+            {"name": "Hellrosa", "hex": "#ff6b81"}
+        ]
+        
+        # Farben zum Dropdown hinzufügen
+        for color in colors:
+            color_dropdown.addItem(color["name"])
+        
+        layout.addRow(QLabel("Farbe:"), color_dropdown)
+        
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        buttons.setStyleSheet(self.button_style)
+        layout.addWidget(buttons)
+        
+        dialog.setLayout(layout)
+        
+        if dialog.exec_():
+            color_name = color_dropdown.currentText()
+            color = next((c["hex"] for c in colors if c["name"] == color_name), "#3498db")
+            
+            # Farbe des Tasks aktualisieren
+            task_item.color = color
+            
+            # Setze Hintergrundfarbe für den Task (abgeschwächt für bessere Lesbarkeit)
+            color_obj = QColor(color)
+            color_obj.setAlpha(40)  # Sehr transparent
+            task_item.setBackground(0, color_obj)
+            
+            # Textfarbe auch aktualisieren
+            task_item.setForeground(0, QColor(color))
+            
+            # Aktualisiere JSON-Datei
+            self.update_json_from_tree()
+
+    def resizeEvent(self, event):
+        """Überschreiben des Resize-Events, um Spaltenbreiten im Tree anzupassen"""
+        super().resizeEvent(event)
+        # Spaltenbreiten im Tree aktualisieren, wenn das Hauptfenster die Größe ändert
+        if hasattr(self, 'tree'):
+            self.tree.updateColumnWidths()
+
+    def change_selected_subtask_status(self):
+        """Ändert den Status des aktuell ausgewählten Subtasks"""
+        selected_items = self.tree.selectedItems()
+        
+        if not selected_items:
+            QMessageBox.information(self, "Hinweis", "Bitte wählen Sie einen Subtask aus.")
+            return
+            
+        selected_item = selected_items[0]
+        
+        # Prüfen, ob es sich um einen Subtask handelt
+        if not selected_item.is_task:
+            self.cycle_subtask_status(selected_item)
+        else:
+            QMessageBox.information(self, "Hinweis", "Status kann nur für Subtasks geändert werden.")
+
+    def update_task_times(self, task_item):
+        """Aktualisiert die summierten Zeiten eines Tasks basierend auf seinen Subtasks"""
+        total_actual_time = 0.0
+        total_estimated_time = 0.0
+        
+        # Alle Subtasks durchgehen und Zeiten summieren
+        for j in range(task_item.childCount()):
+            subtask_item = task_item.child(j)
+            
+            # Aktuelle Werte der Subtasks holen
+            try:
+                actual_time = subtask_item.actual_time
+                estimated_time = subtask_item.estimated_time
+                
+                # Zu Summen addieren
+                total_actual_time += float(actual_time) if actual_time != "N/A" else 0.0
+                total_estimated_time += float(estimated_time) if estimated_time != "N/A" else 0.0
+            except (ValueError, AttributeError):
+                pass  # Fehler beim Konvertieren ignorieren
+        
+        # Werte im Task-Item aktualisieren
+        task_item.actual_time = str(total_actual_time)
+        task_item.estimated_time = str(total_estimated_time)
+        
+        # UI aktualisieren
+        formatted_total_actual = self.format_time_display(str(total_actual_time))
+        formatted_total_estimated = self.format_time_display(str(total_estimated_time))
+        
+        task_item.setText(1, formatted_total_actual)
+        task_item.setText(2, formatted_total_estimated)
+
+# Anwendung starten
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = TodoApp()
+    window.show()
+    sys.exit(app.exec_())
