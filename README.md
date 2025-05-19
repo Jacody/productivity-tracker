@@ -1,6 +1,6 @@
 # Productivity Tracker
 
-A comprehensive tool to boost your productivity with todo list management, time tracking, and Google Calendar integration. Optionally includes face recognition to ensure you're actually working on your tasks.
+A comprehensive tool to boost your productivity with todo list management, time tracking, and Google Calendar integration.Includes face recognition to ensure you're actually working on your tasks.
 
 
 
